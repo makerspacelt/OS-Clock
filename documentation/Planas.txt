@@ -1,0 +1,13 @@
+0. Sugalvoti ádëjà kaip tai turi atrodyti.
+1. Nusibraiþyti pricipinæ schemà ir surinkti dokumentacijà, nepamirðti numatyti, keièiamø komponentø vietas ir patogumà.
+2. Apsiraðyti visas galimybes ir sukurti principinæ algoritmo schemà.
+3. Surasti tinkamus elektros komponentus.
+4. Paskaièiuoti kaðtus.
+5. Nusibraiþyti spausdintinæ plokðtæ.
+6. Apgalvoti dar kartà kas netaip? ko reikia? ko nereikia? kà galima padaryti kitaip? 
+7. Nusipirkti visas dalis ið karto.
+8. Pasigaminti spausdintines plokðtes.
+9. Sulituoti visà schemà pagal instrukcijà.
+10.Supakuoti á numatytà dëþutæ.
+11.Paraðyti detalià dokumentacijà.
+12.Pristatyti visuomenei.
