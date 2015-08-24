@@ -129,10 +129,14 @@ AVRDUDE_SCK_FREQUENCY = -B 8
 # to submit bug reports.
 #AVRDUDE_VERBOSE = -v -v
 
+# Path to avrdude config file
+AVRDUDE_CONFIG_FILE = -C /Applications/Arduino.app/Contents/Java/hardware/tools/avr/etc/avrdude.conf
+
 AVRDUDE_FLAGS = -p $(MCU) -c $(AVRDUDE_PROGRAMMER)
 AVRDUDE_FLAGS += $(AVRDUDE_SCK_FREQUENCY)
 AVRDUDE_FLAGS += $(AVRDUDE_NO_VERIFY)
 AVRDUDE_FLAGS += $(AVRDUDE_VERBOSE)
+AVRDUDE_FLAGS += $(AVRDUDE_CONFIG_FILE)
 
 
 
@@ -140,14 +144,15 @@ AVRDUDE_FLAGS += $(AVRDUDE_VERBOSE)
 
 
 # Define programs and commands.
+PATH_TO_EXEC = /Applications/Arduino.app/Contents/Java/hardware/tools/avr/bin/
 SHELL = sh
-CC = avr-gcc
-OBJCOPY = avr-objcopy
-OBJDUMP = avr-objdump
-SIZE = avr-size
-AR = avr-ar rcs
-NM = avr-nm
-AVRDUDE = avrdude
+CC = $(PATH_TO_EXEC)avr-gcc
+OBJCOPY = $(PATH_TO_EXEC)avr-objcopy
+OBJDUMP = $(PATH_TO_EXEC)avr-objdump
+SIZE = $(PATH_TO_EXEC)avr-size
+AR = $(PATH_TO_EXEC)avr-ar rcs
+NM = $(PATH_TO_EXEC)avr-nm
+AVRDUDE = $(PATH_TO_EXEC)avrdude
 REMOVE = rm -f
 REMOVEDIR = rm -rf
 COPY = cp
