@@ -152,7 +152,7 @@ uint8_t readTime(void)
 	    return FALSE;
 	}
 	tdClock.seconds = tmp[0] & 0x7F;
-	tdClock.minutes = tmp[1] & 0x0F;
+	tdClock.minutes = tmp[1];
 	tdClock.hours = tmp[2] & 0x3F;
 
 	return TRUE;
