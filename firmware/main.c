@@ -18,6 +18,11 @@
 #define FALSE 0
 #define TRUE 1
 
+#define BUTTON_UP       0x04    // sv3 up       - atmega pin 6   PD4
+#define BUTTON_DOWN     0x02    // sv1 down     - atmega pin 4   PD2 INT0
+#define BUTTON_ENTER    0x03    // sv2 left     - atmega pin 5   PD3 INT1
+#define BUTTON_CANCEL   0x05    // sv4 right    - atmega pin 11  PD5
+
 //volatile uint8_t kint, l = ' ', kurisec = 59;
 //volatile uint8_t buff[8], ilg;
 //volatile uint8_t *Buffer = buff;
@@ -46,9 +51,9 @@ void spiMasterInit(void)
 void init(void)
 {
     // set all pins as output
-	DDRB = 0xff; //sets all bits of port B for output
-	DDRC = 0xff;
-	DDRD = 0xff;
+	DDRB = 0xFF; //sets all bits of port B for output
+	DDRC = 0xFF;
+	DDRD = 0xFF;
 	PORTB = 0x00; //sets a output of port B to LOW
 	PORTC = 0x00;
 	PORTD = 0x00;
