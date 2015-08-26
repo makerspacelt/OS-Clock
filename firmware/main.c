@@ -1,4 +1,4 @@
-//#include <avr/interrupt.h>
+#include <avr/interrupt.h>
 #include <util/delay.h>
 #include <avr/io.h>
 #include <util/twi.h>
@@ -26,6 +26,12 @@
 //volatile uint8_t kint, l = ' ', kurisec = 59;
 //volatile uint8_t buff[8], ilg;
 //volatile uint8_t *Buffer = buff;
+
+#define STATUS_READY 0x00
+#define STATUS_MAIN_MENU 0x01
+#define STATUS_WAIT_BUTTON_PRESS 0x02
+
+volatile uint8_t status;
 
 typedef struct {
     uint8_t seconds;
@@ -58,8 +64,24 @@ void init(void)
 	PORTC = 0x00;
 	PORTD = 0x00;
 
+	// set buttons as input
+	DDRD &= ~((1<<PD2)|(1<<PD3)|(1<<PD4)|(1<<PD5));
+	PORTD |= (1<<PD2)|(1<<PD3)|(1<<PD4)|(1<<PD5);
+	// enable pull up resistors
+	SFIOR &= ~(1<<PUD);
+	PORTB &= ~(1<<PB2);
+
 	// Enable Serial Peripheral Interface (SPI)
 	spiMasterInit();
+
+    // Enable external button interrupt
+    GICR |= (1<<INT1);
+    MCUCR &= ~((1<<ISC11)|(0<<ISC10));
+    sei();
+    asm volatile ("nop");
+
+    // Set status to ready state
+    status = STATUS_READY;
 
     // Relax after exhausting work
 	asm volatile ("nop");
@@ -197,6 +219,8 @@ void spiMasterTransmit(char cData)
         case 0x09:
             cData = NUMBER_9;
             break;
+        default:
+            cData = 0x00;
     }
     /* Start transmission */
     SPDR = cData | 0x80;
@@ -205,14 +229,22 @@ void spiMasterTransmit(char cData)
         ;
 }
 
-void clearDisplay()
+void renewDisplay(void)
 {
-    spiMasterTransmit(0x00);
-	spiMasterTransmit(0x00);
-	spiMasterTransmit(0x00);
-	spiMasterTransmit(0x00);
-	spiMasterTransmit(0x00);
-	spiMasterTransmit(0x00);
+    // display data
+    PORTB |= (1<<PB2);
+    PORTB &= ~(1<<PB2);
+}
+
+void clearDisplay(void)
+{
+    spiMasterTransmit(0x10);
+	spiMasterTransmit(0x10);
+	spiMasterTransmit(0x10);
+	spiMasterTransmit(0x10);
+	spiMasterTransmit(0x10);
+	spiMasterTransmit(0x10);
+    renewDisplay();
 }
 
 void displayTime(void)
@@ -224,22 +256,53 @@ void displayTime(void)
     spiMasterTransmit(tdClock.minutes & 0x0F);
     spiMasterTransmit(tdClock.seconds >> 4);
     spiMasterTransmit(tdClock.seconds & 0x0F);
+    renewDisplay();
+}
 
-    // display data
-    PORTB |= (1<<PB2);
-    PORTB &= ~(1<<PB2);
+ISR(INT1_vect)
+{
+    cli();
+    status = STATUS_MAIN_MENU;
+}
+
+void displayStatus(void)
+{
+    spiMasterTransmit(status >> 4);
+    spiMasterTransmit(status & 0x0F);
+    renewDisplay();
 }
 
 int main(void)
 {
+    uint8_t pressedButton;
     init();
     clearDisplay();
 
 	// Repeat indefinitely
 	for(;;)
 	{
-	    if (readTime()) {
-	        displayTime();
-	    }
+	    switch (status)
+        {
+            case STATUS_READY:
+                if (readTime()) {
+                    displayTime();
+                }
+                break;
+            case STATUS_MAIN_MENU:
+                cli();
+                clearDisplay();
+                displayStatus();
+                status = STATUS_WAIT_BUTTON_PRESS;
+            case STATUS_WAIT_BUTTON_PRESS:
+                while((PIND & 0x3C) != 0x3C) {_delay_ms(10);}
+                while((PIND & 0x3C) == 0x3C) {;}
+                _delay_ms(10);
+                pressedButton = (0x3C & ~PIND);
+                while((PIND & 0x3C) != 0x3C) {;}
+                spiMasterTransmit(pressedButton >> 4);
+                spiMasterTransmit(pressedButton & 0x0F);
+                renewDisplay();
+                break;
+        }
     }
 }
