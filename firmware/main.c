@@ -69,7 +69,6 @@ void init(void)
 	PORTD |= (1<<PD2)|(1<<PD3)|(1<<PD4)|(1<<PD5);
 	// enable pull up resistors
 	SFIOR &= ~(1<<PUD);
-	PORTB &= ~(1<<PB2);
 
 	// Enable Serial Peripheral Interface (SPI)
 	spiMasterInit();
