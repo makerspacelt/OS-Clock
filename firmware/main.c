@@ -18,20 +18,25 @@
 #define FALSE 0
 #define TRUE 1
 
-#define BUTTON_UP       0x04    // sv3 up       - atmega pin 6   PD4
-#define BUTTON_DOWN     0x02    // sv1 down     - atmega pin 4   PD2 INT0
-#define BUTTON_ENTER    0x03    // sv2 left     - atmega pin 5   PD3 INT1
-#define BUTTON_CANCEL   0x05    // sv4 right    - atmega pin 11  PD5
+#define PRESSED_UP       0x10    // sv3 up       - atmega pin 6   PD4
+#define PRESSED_DOWN     0x04    // sv1 down     - atmega pin 4   PD2 INT0
+#define PRESSED_ENTER    0x08    // sv2 left     - atmega pin 5   PD3 INT1
+#define PRESSED_CANCEL   0x20    // sv4 right    - atmega pin 11  PD5
 
 //volatile uint8_t kint, l = ' ', kurisec = 59;
 //volatile uint8_t buff[8], ilg;
 //volatile uint8_t *Buffer = buff;
 
 #define STATUS_READY 0x00
-#define STATUS_MAIN_MENU 0x01
-#define STATUS_WAIT_BUTTON_PRESS 0x02
+#define STATUS_CONFIG_MENU 0x01
 
-volatile uint8_t status;
+
+#define CONFIG_START 0x01
+#define CONFIG_BEEPS 0x02
+#define CONFIG_TIME 0x03
+//#define STATUS_WAIT_BUTTON_PRESS 0x02
+
+volatile uint8_t status, oldStatus;
 
 typedef struct {
     uint8_t seconds;
@@ -184,7 +189,7 @@ uint8_t readTime(void)
 	return TRUE;
 }
 
-void spiMasterTransmit(char cData)
+void spiMasterTransmit(uint8_t cData)
 {
     switch (cData)
     {
@@ -258,22 +263,91 @@ void displayTime(void)
     renewDisplay();
 }
 
+void displayChar(uint8_t data)
+{
+    if ((data >> 4) != 0x00) {
+        spiMasterTransmit(data >> 4);
+    }
+    spiMasterTransmit(data & 0x0F);
+    renewDisplay();
+}
+
+uint8_t getPressedButton(void)
+{
+    uint8_t pressedButton;
+    // read pressed button
+    while((PIND & 0x3C) != 0x3C) {_delay_ms(10);}
+    while((PIND & 0x3C) == 0x3C) {;}
+    _delay_ms(10);
+    pressedButton = (0x3C & ~PIND);
+    while((PIND & 0x3C) != 0x3C) {;}
+
+    return pressedButton;
+}
+
+void configureDevice(void)
+{
+    uint8_t pressedButton, configStatus = CONFIG_START, minValue = 0x01, maxValue = 0x03;
+    while (configStatus)
+    {
+        clearDisplay();
+        //display status
+        displayChar(configStatus);
+        pressedButton = getPressedButton();
+
+        switch (pressedButton)
+        {
+            case PRESSED_UP:
+                configStatus++;
+                if (configStatus > maxValue) {
+                    configStatus = minValue;
+                }
+                break;
+            case PRESSED_DOWN:
+                configStatus--;
+                if (configStatus < minValue) {
+                    configStatus = maxValue;
+                }
+                break;
+            case PRESSED_ENTER:
+                if (configStatus == CONFIG_START) {
+                    minValue = (CONFIG_START << 4) | 0x01;
+                    maxValue = (CONFIG_START << 4) | 0x05;
+                }
+                if (configStatus == CONFIG_BEEPS) {
+                    minValue = (CONFIG_BEEPS << 4) | 0x01;
+                    maxValue = (CONFIG_BEEPS << 4)| 0x05;
+                }
+                if (configStatus == CONFIG_TIME) {
+                    minValue = (CONFIG_TIME << 4) | 0x01;
+                    maxValue = (CONFIG_TIME << 4) | 0x03;
+                }
+                if (!(configStatus & 0xF0)) {
+                    configStatus = (configStatus << 4) | 0x01;
+                }
+                break;
+            case PRESSED_CANCEL:
+                configStatus = configStatus >> 4;
+                minValue = 0x01;
+                maxValue = 0x03;
+                break;
+        }
+    }
+    status = oldStatus;
+    sei();
+}
+
 ISR(INT1_vect)
 {
     cli();
-    status = STATUS_MAIN_MENU;
-}
-
-void displayStatus(void)
-{
-    spiMasterTransmit(status >> 4);
-    spiMasterTransmit(status & 0x0F);
-    renewDisplay();
+    if (status != STATUS_CONFIG_MENU) {
+        oldStatus = status;
+    }
+    status = STATUS_CONFIG_MENU;
 }
 
 int main(void)
 {
-    uint8_t pressedButton;
     init();
     clearDisplay();
 
@@ -287,20 +361,9 @@ int main(void)
                     displayTime();
                 }
                 break;
-            case STATUS_MAIN_MENU:
+            case STATUS_CONFIG_MENU:
                 cli();
-                clearDisplay();
-                displayStatus();
-                status = STATUS_WAIT_BUTTON_PRESS;
-            case STATUS_WAIT_BUTTON_PRESS:
-                while((PIND & 0x3C) != 0x3C) {_delay_ms(10);}
-                while((PIND & 0x3C) == 0x3C) {;}
-                _delay_ms(10);
-                pressedButton = (0x3C & ~PIND);
-                while((PIND & 0x3C) != 0x3C) {;}
-                spiMasterTransmit(pressedButton >> 4);
-                spiMasterTransmit(pressedButton & 0x0F);
-                renewDisplay();
+                configureDevice();
                 break;
         }
     }
