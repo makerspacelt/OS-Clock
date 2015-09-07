@@ -22,6 +22,9 @@
 #define PRESSED_ENTER   0x08    // sv2 left     - atmega pin 5   PD3 INT1
 #define PRESSED_CANCEL  0x20    // sv4 right    - atmega pin 11  PD5
 
+#define BUZZER_LONG     PD6     // PD6
+#define BUZZER_SHORT    PD7     // PD7
+
 //volatile uint8_t kint, l = ' ', kurisec = 59;
 //volatile uint8_t buff[8], ilg;
 //volatile uint8_t *Buffer = buff;
@@ -37,7 +40,7 @@
 #define CONFIG_BEEPS 0x02
 #define CONFIG_TIME 0x03
 
-volatile uint8_t oldStatus;
+volatile uint8_t oldStatus, lastSecond = 0x00;
 
 typedef struct {
     uint8_t seconds;
@@ -124,7 +127,7 @@ void init(void)
 
 void setFactorySetting(void)
 {
-    deviceSetting.status = STATUS_READY;
+    deviceSetting.status = STATUS_REAL_TIME_START;
     deviceSetting.longCount = 0x02;
     deviceSetting.shortCount = 0x03;
     deviceSetting.long1 = 0x00;
@@ -394,6 +397,34 @@ void configureDevice(void)
     sei();
 }
 
+void makeBeep(void){
+    uint8_t *tmp;
+    tmp = (uint8_t *) &deviceSetting.short1;
+    for(uint8_t i = 0; i < deviceSetting.shortCount; i++){
+        if((tdClock.seconds == *tmp) && (lastSecond != tdClock.seconds)){
+            clearDisplay();
+            PORTD |= (1<<BUZZER_SHORT);
+            _delay_ms(400);
+            PORTD &= ~(1<<BUZZER_SHORT);
+            lastSecond = tdClock.seconds;
+            break;
+        }
+        tmp++;
+    }
+    tmp = (uint8_t *) &deviceSetting.long1;
+    for(uint8_t i = 0; i < deviceSetting.longCount; i++){
+        if((tdClock.seconds == *tmp) && (lastSecond != tdClock.seconds)){
+            clearDisplay();
+            PORTD |= (1<<BUZZER_LONG);
+            _delay_ms(400);
+            PORTD &= ~(1<<BUZZER_LONG);
+            lastSecond = tdClock.seconds;
+            break;
+        }
+        tmp++;
+    }
+}
+
 ISR(INT1_vect)
 {
     cli();
@@ -419,6 +450,8 @@ int main(void)
         if (readTime()) {
             switch (deviceSetting.status)
             {
+                case STATUS_REAL_TIME_START:
+                    makeBeep();
                 case STATUS_REAL_TIME:
                     displayTime();
                     break;
