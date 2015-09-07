@@ -14,14 +14,13 @@
 #define NUMBER_8 0x7F
 #define NUMBER_9 0x7E
 
-//#define DATA_LEN 20
 #define FALSE 0
 #define TRUE 1
 
-#define PRESSED_UP       0x10    // sv3 up       - atmega pin 6   PD4
-#define PRESSED_DOWN     0x04    // sv1 down     - atmega pin 4   PD2 INT0
-#define PRESSED_ENTER    0x08    // sv2 left     - atmega pin 5   PD3 INT1
-#define PRESSED_CANCEL   0x20    // sv4 right    - atmega pin 11  PD5
+#define PRESSED_UP      0x10    // sv3 up       - atmega pin 6   PD4
+#define PRESSED_DOWN    0x04    // sv1 down     - atmega pin 4   PD2 INT0
+#define PRESSED_ENTER   0x08    // sv2 left     - atmega pin 5   PD3 INT1
+#define PRESSED_CANCEL  0x20    // sv4 right    - atmega pin 11  PD5
 
 //volatile uint8_t kint, l = ' ', kurisec = 59;
 //volatile uint8_t buff[8], ilg;
@@ -34,7 +33,6 @@
 #define CONFIG_START 0x01
 #define CONFIG_BEEPS 0x02
 #define CONFIG_TIME 0x03
-//#define STATUS_WAIT_BUTTON_PRESS 0x02
 
 volatile uint8_t status, oldStatus;
 
@@ -62,21 +60,21 @@ void spiMasterInit(void)
 void init(void)
 {
     // set all pins as output
-	DDRB = 0xFF; //sets all bits of port B for output
-	DDRC = 0xFF;
-	DDRD = 0xFF;
-	PORTB = 0x00; //sets a output of port B to LOW
-	PORTC = 0x00;
-	PORTD = 0x00;
+    DDRB = 0xFF; //sets all bits of port B for output
+    DDRC = 0xFF;
+    DDRD = 0xFF;
+    PORTB = 0x00; //sets a output of port B to LOW
+    PORTC = 0x00;
+    PORTD = 0x00;
 
-	// set buttons as input
-	DDRD &= ~((1<<PD2)|(1<<PD3)|(1<<PD4)|(1<<PD5));
-	PORTD |= (1<<PD2)|(1<<PD3)|(1<<PD4)|(1<<PD5);
-	// enable pull up resistors
-	SFIOR &= ~(1<<PUD);
+    // set buttons as input
+    DDRD &= ~((1<<PD2)|(1<<PD3)|(1<<PD4)|(1<<PD5));
+    PORTD |= (1<<PD2)|(1<<PD3)|(1<<PD4)|(1<<PD5);
+    // enable pull up resistors
+    SFIOR &= ~(1<<PUD);
 
-	// Enable Serial Peripheral Interface (SPI)
-	spiMasterInit();
+    // Enable Serial Peripheral Interface (SPI)
+    spiMasterInit();
 
     // Enable external button interrupt
     GICR |= (1<<INT1);
@@ -88,35 +86,35 @@ void init(void)
     status = STATUS_READY;
 
     // Relax after exhausting work
-	asm volatile ("nop");
+    asm volatile ("nop");
 }
 
 uint8_t prepareTwi(uint8_t mode)
 {
     // 1 - read mode; 0 - write mode;
     // send START condition
-	TWCR = (1<<TWINT)|(1<<TWSTA)|(1<<TWEN);
+    TWCR = (1<<TWINT)|(1<<TWSTA)|(1<<TWEN);
     // wait for start condition transmitted
-	while (!(TWCR & (1<<TWINT)));
+    while (!(TWCR & (1<<TWINT)));
     // check status code
-	if (TW_STATUS != TW_START) {
+    if (TW_STATUS != TW_START) {
         // error
-	    return FALSE;
-	};
+        return FALSE;
+    };
     // set device address and twi mode SLA+R = 1 or SLA+W = 0
-	TWDR = 0B11010000 | mode;
-	// transmit SLA
-	TWCR = (1<<TWINT) | (1<<TWEN);
-	// wait for SLA transmitted
-	while (!(TWCR & (1<<TWINT)));
+    TWDR = 0B11010000 | mode;
+    // transmit SLA
+    TWCR = (1<<TWINT) | (1<<TWEN);
+    // wait for SLA transmitted
+    while (!(TWCR & (1<<TWINT)));
     // check status code
-	if (mode == 0 && TW_STATUS == TW_MT_SLA_ACK){
-		return TRUE;
-	}
-	if (mode == 1 && TW_STATUS == TW_MR_SLA_ACK){
+    if (mode == 0 && TW_STATUS == TW_MT_SLA_ACK){
         return TRUE;
-	}
-	return FALSE;
+    }
+    if (mode == 1 && TW_STATUS == TW_MR_SLA_ACK){
+        return TRUE;
+    }
+    return FALSE;
 }
 
 void generateStop(void)
@@ -161,9 +159,9 @@ uint8_t twiWrite(uint8_t* data, uint8_t count)
         TWCR = (1<<TWINT) | (1<<TWEN);
         // wait for data byte transmitted
         while (!(TWCR & (1<<TWINT)));
-	    if ( TW_STATUS != TW_MT_DATA_ACK ) {
-	        return FALSE;
-	    }
+        if ( TW_STATUS != TW_MT_DATA_ACK ) {
+            return FALSE;
+        }
     } while ( --count != 0 );
     generateStop( );
     return TRUE;
@@ -172,21 +170,21 @@ uint8_t twiWrite(uint8_t* data, uint8_t count)
 uint8_t readTime(void)
 {
     // read time from RTC
-	uint8_t tmp[3];
-	uint8_t reg = 0;
-	// write DS1307 from which register will begin read
-	if (!twiWrite(&reg, 1)) {
-	    return FALSE;
-	}
-	// read DS1307 registers
-	if (!twiRead(tmp, 3)) {
-	    return FALSE;
-	}
-	tdClock.seconds = tmp[0] & 0x7F;
-	tdClock.minutes = tmp[1];
-	tdClock.hours = tmp[2] & 0x3F;
+    uint8_t tmp[3];
+    uint8_t reg = 0;
+    // write DS1307 from which register will begin read
+    if (!twiWrite(&reg, 1)) {
+        return FALSE;
+    }
+    // read DS1307 registers
+    if (!twiRead(tmp, 3)) {
+        return FALSE;
+    }
+    tdClock.seconds = tmp[0] & 0x7F;
+    tdClock.minutes = tmp[1];
+    tdClock.hours = tmp[2] & 0x3F;
 
-	return TRUE;
+    return TRUE;
 }
 
 void spiMasterTransmit(uint8_t cData)
@@ -243,11 +241,11 @@ void renewDisplay(void)
 void clearDisplay(void)
 {
     spiMasterTransmit(0x10);
-	spiMasterTransmit(0x10);
-	spiMasterTransmit(0x10);
-	spiMasterTransmit(0x10);
-	spiMasterTransmit(0x10);
-	spiMasterTransmit(0x10);
+    spiMasterTransmit(0x10);
+    spiMasterTransmit(0x10);
+    spiMasterTransmit(0x10);
+    spiMasterTransmit(0x10);
+    spiMasterTransmit(0x10);
     renewDisplay();
 }
 
@@ -351,10 +349,10 @@ int main(void)
     init();
     clearDisplay();
 
-	// Repeat indefinitely
-	for(;;)
-	{
-	    switch (status)
+    // Repeat indefinitely
+    for(;;)
+    {
+        switch (status)
         {
             case STATUS_READY:
                 if (readTime()) {
