@@ -5,3 +5,4 @@
 *.lst
 *.map
 *.o
+/firmware/.dep
