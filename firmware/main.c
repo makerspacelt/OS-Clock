@@ -76,7 +76,7 @@ typedef struct {
 
     uint8_t minus;          //0x18 start from minus or plus
     uint8_t seconds;        //0x19
-    uint8_t    minutes;
+    uint8_t minutes;
     uint8_t hours;
 
     uint8_t diff_sec;       //x1C
@@ -85,7 +85,7 @@ typedef struct {
 
 } setting_t;
 
-volatile ds1307Reg_t tdClock;
+volatile ds1307Reg_t time;
 volatile setting_t deviceSetting;
 
 void spiMasterInit(void)
@@ -242,9 +242,9 @@ uint8_t readTime(void)
     if (!twiRead(tmp, 3)) {
         return FALSE;
     }
-    tdClock.seconds = tmp[0] & 0x7F;
-    tdClock.minutes = tmp[1];
-    tdClock.hours = tmp[2] & 0x3F;
+    time.seconds = tmp[0] & 0x7F;
+    time.minutes = tmp[1];
+    time.hours = tmp[2] & 0x3F;
 
     return TRUE;
 }
@@ -314,12 +314,12 @@ void clearDisplay(void)
 void displayTime(void)
 {
     // send data for display
-    spiMasterTransmit(tdClock.hours >> 4);
-    spiMasterTransmit(tdClock.hours & 0x0F);
-    spiMasterTransmit(tdClock.minutes >> 4);
-    spiMasterTransmit(tdClock.minutes & 0x0F);
-    spiMasterTransmit(tdClock.seconds >> 4);
-    spiMasterTransmit(tdClock.seconds & 0x0F);
+    spiMasterTransmit(time.hours >> 4);
+    spiMasterTransmit(time.hours & 0x0F);
+    spiMasterTransmit(time.minutes >> 4);
+    spiMasterTransmit(time.minutes & 0x0F);
+    spiMasterTransmit(time.seconds >> 4);
+    spiMasterTransmit(time.seconds & 0x0F);
     renewDisplay();
 }
 
@@ -401,24 +401,24 @@ void makeBeep(void){
     uint8_t *tmp;
     tmp = (uint8_t *) &deviceSetting.short1;
     for(uint8_t i = 0; i < deviceSetting.shortCount; i++){
-        if((tdClock.seconds == *tmp) && (lastSecond != tdClock.seconds)){
+        if((time.seconds == *tmp) && (lastSecond != time.seconds)){
             clearDisplay();
             PORTD |= (1<<BUZZER_SHORT);
             _delay_ms(400);
             PORTD &= ~(1<<BUZZER_SHORT);
-            lastSecond = tdClock.seconds;
+            lastSecond = time.seconds;
             break;
         }
         tmp++;
     }
     tmp = (uint8_t *) &deviceSetting.long1;
     for(uint8_t i = 0; i < deviceSetting.longCount; i++){
-        if((tdClock.seconds == *tmp) && (lastSecond != tdClock.seconds)){
+        if((time.seconds == *tmp) && (lastSecond != time.seconds)){
             clearDisplay();
             PORTD |= (1<<BUZZER_LONG);
             _delay_ms(400);
             PORTD &= ~(1<<BUZZER_LONG);
-            lastSecond = tdClock.seconds;
+            lastSecond = time.seconds;
             break;
         }
         tmp++;
