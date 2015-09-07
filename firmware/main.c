@@ -26,15 +26,18 @@
 //volatile uint8_t buff[8], ilg;
 //volatile uint8_t *Buffer = buff;
 
-#define STATUS_READY 0x00
+#define STATUS_REAL_TIME 0x00
 #define STATUS_CONFIG_MENU 0x01
-
+#define STATUS_REAL_TIME_START 0x02
+#define STATUS_ZERO_TIME_START 0x03
+#define STATUS_PLUS_TIME_START 0x04
+#define STATUS_MINUS_TIME_START 0x05
 
 #define CONFIG_START 0x01
 #define CONFIG_BEEPS 0x02
 #define CONFIG_TIME 0x03
 
-volatile uint8_t status, oldStatus;
+volatile uint8_t oldStatus;
 
 typedef struct {
     uint8_t seconds;
@@ -47,7 +50,40 @@ typedef struct {
     uint8_t control;
 } ds1307Reg_t;
 
+typedef struct {
+    //uint8_t issaugota;      //from 0x08
+    uint8_t status;         //0x09
+
+    uint8_t longCount;      //0x0A
+    uint8_t shortCount;     //0x0B
+
+    uint8_t long1;          //0x0C
+    uint8_t long2;
+    uint8_t long3;
+    uint8_t long4;
+
+    uint8_t short1;         //0x10
+    uint8_t short2;
+    uint8_t short3;
+    uint8_t short4;
+    uint8_t short5;
+    uint8_t short6;
+    uint8_t short7;
+    uint8_t short8;
+
+    uint8_t minus;          //0x18 start from minus or plus
+    uint8_t seconds;        //0x19
+    uint8_t    minutes;
+    uint8_t hours;
+
+    uint8_t diff_sec;       //x1C
+    uint8_t diff_min;
+    uint8_t diff_hour;
+
+} setting_t;
+
 volatile ds1307Reg_t tdClock;
+volatile setting_t deviceSetting;
 
 void spiMasterInit(void)
 {
@@ -82,11 +118,34 @@ void init(void)
     sei();
     asm volatile ("nop");
 
-    // Set status to ready state
-    status = STATUS_READY;
-
     // Relax after exhausting work
     asm volatile ("nop");
+}
+
+void setFactorySetting(void)
+{
+    deviceSetting.status = STATUS_READY;
+    deviceSetting.longCount = 0x02;
+    deviceSetting.shortCount = 0x03;
+    deviceSetting.long1 = 0x00;
+    deviceSetting.long2 = 0x19;
+    deviceSetting.long3 = 0;
+    deviceSetting.long4 = 0;
+    deviceSetting.short1 = 0x58;
+    deviceSetting.short2 = 0x59;
+    deviceSetting.short3 = 0x09;
+    deviceSetting.short4 = 0;
+    deviceSetting.short5 = 0;
+    deviceSetting.short6 = 0;
+    deviceSetting.short7 = 0;
+    deviceSetting.short8 = 0;
+    deviceSetting.minus = 0;
+    deviceSetting.seconds = 0;
+    deviceSetting.minutes = 0;
+    deviceSetting.hours = 0;
+    deviceSetting.diff_sec = 59;
+    deviceSetting.diff_min = 59;
+    deviceSetting.diff_hour = 1;
 }
 
 uint8_t prepareTwi(uint8_t mode)
@@ -331,17 +390,17 @@ void configureDevice(void)
                 break;
         }
     }
-    status = oldStatus;
+    deviceSetting.status = oldStatus;
     sei();
 }
 
 ISR(INT1_vect)
 {
     cli();
-    if (status != STATUS_CONFIG_MENU) {
-        oldStatus = status;
+    if (deviceSetting.status != STATUS_CONFIG_MENU) {
+        oldStatus = deviceSetting.status;
     }
-    status = STATUS_CONFIG_MENU;
+    deviceSetting.status = STATUS_CONFIG_MENU;
 }
 
 int main(void)
@@ -349,20 +408,25 @@ int main(void)
     init();
     clearDisplay();
 
+    // Set factory settings
+    setFactorySetting();
+
+    // Read settings from memory
+
     // Repeat indefinitely
     for(;;)
     {
-        switch (status)
-        {
-            case STATUS_READY:
-                if (readTime()) {
+        if (readTime()) {
+            switch (deviceSetting.status)
+            {
+                case STATUS_REAL_TIME:
                     displayTime();
-                }
-                break;
-            case STATUS_CONFIG_MENU:
-                cli();
-                configureDevice();
-                break;
+                    break;
+                case STATUS_CONFIG_MENU:
+                    cli();
+                    configureDevice();
+                    break;
+            }
         }
     }
 }
