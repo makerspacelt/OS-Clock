@@ -36,9 +36,12 @@
 #define STATUS_PLUS_TIME_START  0x04
 #define STATUS_MINUS_TIME_START 0x05
 
-#define CONFIG_START    0x01
-#define CONFIG_BEEPS    0x02
-#define CONFIG_TIME     0x03
+#define CONFIG_START            0x01
+#define CONFIG_START_REAL_TIME  0x11
+#define CONFIG_START_ZERO_TIME  0x12
+#define CONFIG_REAL_TIME        0x15
+#define CONFIG_BEEPS            0x02
+#define CONFIG_TIME             0x03
 
 volatile uint8_t oldStatus, lastSecond = 0x00;
 
@@ -75,11 +78,9 @@ typedef struct {
     uint8_t short8;
 
     uint8_t minus;          //0x18 start from minus or plus
-    uint8_t seconds;        //0x19
-    uint8_t minutes;
-    uint8_t hours;
+    uint32_t timestamp;     //0x19
 
-    uint8_t diff_sec;       //x1C
+    uint8_t diff_sec;       //x1D
     uint8_t diff_min;
     uint8_t diff_hour;
 
@@ -117,7 +118,7 @@ void init(void)
 
     // Enable external button interrupt
     GICR |= (1<<INT1);
-    MCUCR &= ~((1<<ISC11)|(0<<ISC10));
+    MCUCR &= ~((1<<ISC11)|(1<<ISC10));
     sei();
     asm volatile ("nop");
 
@@ -143,9 +144,7 @@ void setFactorySetting(void)
     deviceSetting.short7 = 0;
     deviceSetting.short8 = 0;
     deviceSetting.minus = 0;
-    deviceSetting.seconds = 0;
-    deviceSetting.minutes = 0;
-    deviceSetting.hours = 0;
+    deviceSetting.timestamp = 0;
     deviceSetting.diff_sec = 59;
     deviceSetting.diff_min = 59;
     deviceSetting.diff_hour = 1;
@@ -345,6 +344,13 @@ uint8_t getPressedButton(void)
     return pressedButton;
 }
 
+uint32_t getTimeStamp(void)
+{
+    return (time.seconds >> 4) * 10 + (time.seconds & 0x0F) +
+        (time.minutes >> 4) * 10 * 60 + (time.minutes & 0x0F) * 60 +
+        (time.hours >> 4) * 10 * 3600 + (time.hours & 0x0F) * 3600;
+}
+
 void configureDevice(void)
 {
     uint8_t pressedButton, configStatus = CONFIG_START, minValue = 0x01, maxValue = 0x03;
@@ -370,20 +376,35 @@ void configureDevice(void)
                 }
                 break;
             case PRESSED_ENTER:
-                if (configStatus == CONFIG_START) {
-                    minValue = (CONFIG_START << 4) | 0x01;
-                    maxValue = (CONFIG_START << 4) | 0x05;
-                }
-                if (configStatus == CONFIG_BEEPS) {
-                    minValue = (CONFIG_BEEPS << 4) | 0x01;
-                    maxValue = (CONFIG_BEEPS << 4)| 0x05;
-                }
-                if (configStatus == CONFIG_TIME) {
-                    minValue = (CONFIG_TIME << 4) | 0x01;
-                    maxValue = (CONFIG_TIME << 4) | 0x03;
-                }
-                if (!(configStatus & 0xF0)) {
-                    configStatus = (configStatus << 4) | 0x01;
+                switch (configStatus)
+                {
+                    case CONFIG_START:
+                    case CONFIG_BEEPS:
+                        minValue = (configStatus << 4) | 0x01;
+                        maxValue = (configStatus << 4) | 0x05;
+                        configStatus = minValue;
+                        break;
+                    case CONFIG_TIME:
+                        minValue = (CONFIG_TIME << 4) | 0x01;
+                        maxValue = (CONFIG_TIME << 4) | 0x03;
+                        configStatus = minValue;
+                        break;
+                    case CONFIG_START_REAL_TIME:
+                        oldStatus = STATUS_REAL_TIME_START;
+                        configStatus = 0x00;
+                        break;
+                    case CONFIG_START_ZERO_TIME:
+                        if(readTime()){
+                            deviceSetting.minus = 0x00;
+                            deviceSetting.timestamp = getTimeStamp();
+                            oldStatus = STATUS_ZERO_TIME_START;
+                            configStatus = 0x00;
+                        }
+                        break;
+                    case CONFIG_REAL_TIME:
+                        oldStatus = STATUS_REAL_TIME;
+                        configStatus = 0x00;
+                        break;
                 }
                 break;
             case PRESSED_CANCEL:
@@ -394,7 +415,6 @@ void configureDevice(void)
         }
     }
     deviceSetting.status = oldStatus;
-    sei();
 }
 
 void makeBeep(void){
@@ -423,6 +443,20 @@ void makeBeep(void){
     }
 }
 
+void calculateTime(void)
+{
+    uint32_t realTime;
+    uint8_t temp;
+    realTime = getTimeStamp();
+    realTime -= deviceSetting.timestamp;
+    temp = realTime % 60;
+    time.seconds = (temp / 10 << 4) | (temp % 10);
+    temp = realTime % 3600 / 60;
+    time.minutes = (temp / 10 << 4) | (temp % 10);
+    temp = realTime / 3600;
+    time.hours = (temp / 10 << 4) | (temp % 10);
+}
+
 ISR(INT1_vect)
 {
     cli();
@@ -448,14 +482,23 @@ int main(void)
         if (readTime()) {
             switch (deviceSetting.status)
             {
-                case STATUS_REAL_TIME_START:
+                case STATUS_ZERO_TIME_START:
+                    calculateTime();
+                    displayTime();
                     makeBeep();
+                    break;
+                case STATUS_REAL_TIME_START:
+                    displayTime();
+                    makeBeep();
+                    break;
                 case STATUS_REAL_TIME:
                     displayTime();
                     break;
                 case STATUS_CONFIG_MENU:
                     cli();
                     configureDevice();
+                    _delay_ms(100);
+                    sei();
                     break;
             }
         }
