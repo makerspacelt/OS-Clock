@@ -29,16 +29,16 @@
 //volatile uint8_t buff[8], ilg;
 //volatile uint8_t *Buffer = buff;
 
-#define STATUS_REAL_TIME 0x00
-#define STATUS_CONFIG_MENU 0x01
-#define STATUS_REAL_TIME_START 0x02
-#define STATUS_ZERO_TIME_START 0x03
-#define STATUS_PLUS_TIME_START 0x04
+#define STATUS_REAL_TIME        0x00
+#define STATUS_CONFIG_MENU      0x01
+#define STATUS_REAL_TIME_START  0x02
+#define STATUS_ZERO_TIME_START  0x03
+#define STATUS_PLUS_TIME_START  0x04
 #define STATUS_MINUS_TIME_START 0x05
 
-#define CONFIG_START 0x01
-#define CONFIG_BEEPS 0x02
-#define CONFIG_TIME 0x03
+#define CONFIG_START    0x01
+#define CONFIG_BEEPS    0x02
+#define CONFIG_TIME     0x03
 
 volatile uint8_t oldStatus, lastSecond = 0x00;
 
@@ -128,15 +128,15 @@ void init(void)
 void setFactorySetting(void)
 {
     deviceSetting.status = STATUS_REAL_TIME_START;
-    deviceSetting.longCount = 0x02;
-    deviceSetting.shortCount = 0x03;
+    deviceSetting.longCount = 0x01;
+    deviceSetting.shortCount = 0x02;
     deviceSetting.long1 = 0x00;
-    deviceSetting.long2 = 0x19;
+    deviceSetting.long2 = 0;
     deviceSetting.long3 = 0;
     deviceSetting.long4 = 0;
     deviceSetting.short1 = 0x58;
     deviceSetting.short2 = 0x59;
-    deviceSetting.short3 = 0x09;
+    deviceSetting.short3 = 0;
     deviceSetting.short4 = 0;
     deviceSetting.short5 = 0;
     deviceSetting.short6 = 0;
@@ -210,7 +210,7 @@ uint8_t twiRead(uint8_t* data, uint8_t count)
     return TRUE;
 }
 
-uint8_t twiWrite(uint8_t* data, uint8_t count)
+uint8_t twiWrite(uint8_t *data, uint8_t count)
 {
     if (!prepareTwi(0)) {
         return FALSE;
@@ -402,9 +402,8 @@ void makeBeep(void){
     tmp = (uint8_t *) &deviceSetting.short1;
     for(uint8_t i = 0; i < deviceSetting.shortCount; i++){
         if((time.seconds == *tmp) && (lastSecond != time.seconds)){
-            clearDisplay();
             PORTD |= (1<<BUZZER_SHORT);
-            _delay_ms(400);
+            _delay_ms(150);
             PORTD &= ~(1<<BUZZER_SHORT);
             lastSecond = time.seconds;
             break;
@@ -414,9 +413,8 @@ void makeBeep(void){
     tmp = (uint8_t *) &deviceSetting.long1;
     for(uint8_t i = 0; i < deviceSetting.longCount; i++){
         if((time.seconds == *tmp) && (lastSecond != time.seconds)){
-            clearDisplay();
             PORTD |= (1<<BUZZER_LONG);
-            _delay_ms(400);
+            _delay_ms(350);
             PORTD &= ~(1<<BUZZER_LONG);
             lastSecond = time.seconds;
             break;
