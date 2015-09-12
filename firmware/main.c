@@ -56,8 +56,12 @@ typedef struct {
     uint8_t control;
 } ds1307Reg_t;
 
+#define DATA_LEN 21
+#define SETTING_ADDRESS 0x08
+
 typedef struct {
-    //uint8_t issaugota;      //from 0x08
+    uint8_t firstAddress;   //value are not saved, only for saving addressing
+    uint8_t saved;          //from 0x08
     uint8_t status;         //0x09
 
     uint8_t longCount;      //0x0A
@@ -128,21 +132,23 @@ void init(void)
 
 void setFactorySetting(void)
 {
-    deviceSetting.status = STATUS_REAL_TIME_START;
+    deviceSetting.firstAddress = SETTING_ADDRESS;   //0x08
+    deviceSetting.saved = FALSE;                    //0x00
+    deviceSetting.status = STATUS_REAL_TIME;        //0x00
     deviceSetting.longCount = 0x01;
     deviceSetting.shortCount = 0x02;
     deviceSetting.long1 = 0x00;
-    deviceSetting.long2 = 0;
-    deviceSetting.long3 = 0;
-    deviceSetting.long4 = 0;
+    deviceSetting.long2 = 0x15;
+    deviceSetting.long3 = 0x30;
+    deviceSetting.long4 = 0x45;
     deviceSetting.short1 = 0x58;
     deviceSetting.short2 = 0x59;
-    deviceSetting.short3 = 0;
-    deviceSetting.short4 = 0;
-    deviceSetting.short5 = 0;
-    deviceSetting.short6 = 0;
-    deviceSetting.short7 = 0;
-    deviceSetting.short8 = 0;
+    deviceSetting.short3 = 0x13;
+    deviceSetting.short4 = 0x14;
+    deviceSetting.short5 = 0x28;
+    deviceSetting.short6 = 0x29;
+    deviceSetting.short7 = 0x43;
+    deviceSetting.short8 = 0x44;
     deviceSetting.minus = 0;
     deviceSetting.timestamp = 0;
     deviceSetting.diff_sec = 59;
@@ -248,6 +254,20 @@ uint8_t readTime(void)
     return TRUE;
 }
 
+void readSettings(void)
+{
+    uint8_t reg = SETTING_ADDRESS;
+    while(!twiWrite(&reg, 1)) {}
+    twiRead((uint8_t *) &deviceSetting.saved, DATA_LEN);
+}
+
+void saveSettings(void)
+{
+    deviceSetting.saved = TRUE;
+    deviceSetting.firstAddress = SETTING_ADDRESS;
+    twiWrite((uint8_t *) &deviceSetting, DATA_LEN + 1);
+}
+
 void spiMasterTransmit(uint8_t cData)
 {
     switch (cData)
@@ -281,6 +301,24 @@ void spiMasterTransmit(uint8_t cData)
             break;
         case 0x09:
             cData = NUMBER_9;
+            break;
+        case 0x0A:
+            cData = 0x7D;
+            break;
+        case 0x0B:
+            cData = 0X4F;
+            break;
+        case 0x0C:
+            cData = 0x53;
+            break;
+        case 0x0D:
+            cData = 0x2F;
+            break;
+        case 0x0E:
+            cData = 0x5B;
+            break;
+        case 0x0F:
+            cData = 0x59;
             break;
         default:
             cData = 0x00;
@@ -395,10 +433,12 @@ void configureDevice(void)
                         break;
                     case CONFIG_START_ZERO_TIME:
                         if(readTime()){
+                            deviceSetting.status = STATUS_ZERO_TIME_START;
                             deviceSetting.minus = 0x00;
                             deviceSetting.timestamp = getTimeStamp();
+                            saveSettings();
                             oldStatus = STATUS_ZERO_TIME_START;
-                            configStatus = 0x00;
+                            configStatus = 0x00;    //exit from configuration
                         }
                         break;
                     case CONFIG_REAL_TIME:
@@ -471,10 +511,13 @@ int main(void)
     init();
     clearDisplay();
 
-    // Set factory settings
-    setFactorySetting();
-
     // Read settings from memory
+    readSettings();
+
+    // Set factory settings
+    if (deviceSetting.saved == FALSE) {
+        setFactorySetting();
+    }
 
     // Repeat indefinitely
     for(;;)
