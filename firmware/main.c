@@ -318,6 +318,9 @@ void spiMasterTransmit(uint8_t cData)
         case 0x0F:
             cData = 0x59;
             break;
+        case 0xFE:  //minus
+            cData = 0x08;
+            break;
         default:
             cData = 0x00;
     }
@@ -349,8 +352,20 @@ void clearDisplay(void)
 void displayTime(void)
 {
     // send data for display
-    spiMasterTransmit(time.hours >> 4);
-    spiMasterTransmit(time.hours & 0x0F);
+    if ((time.hours & 0xF0) == 0x00) {
+        if (deviceSetting.minus == TRUE) {
+            spiMasterTransmit(0xFE);
+        } else {
+            spiMasterTransmit(0xFF);
+        }
+        if ((time.hours & 0x0F) == 0x00) {
+            spiMasterTransmit(0xFF);
+        } else {
+            spiMasterTransmit(time.hours & 0x0F);
+        }
+    } else {
+        spiMasterTransmit(time.hours >> 4);
+    }
     spiMasterTransmit(time.minutes >> 4);
     spiMasterTransmit(time.minutes & 0x0F);
     spiMasterTransmit(time.seconds >> 4);
