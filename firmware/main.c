@@ -39,6 +39,8 @@
 #define CONFIG_START            0x01
 #define CONFIG_START_REAL_TIME  0x11
 #define CONFIG_START_ZERO_TIME  0x12
+#define CONFIG_START_PLUS_TIME  0x13
+#define CONFIG_START_MINUS_TIME 0x14
 #define CONFIG_REAL_TIME        0x15
 #define CONFIG_BEEPS            0x02
 #define CONFIG_TIME             0x03
@@ -56,7 +58,7 @@ typedef struct {
     uint8_t control;
 } ds1307Reg_t;
 
-#define DATA_LEN 21
+#define DATA_LEN 25
 #define SETTING_ADDRESS 0x08
 
 typedef struct {
@@ -84,9 +86,7 @@ typedef struct {
     uint8_t minus;          //0x18 start from minus or plus
     uint32_t timestamp;     //0x19
 
-    uint8_t diff_sec;       //x1D
-    uint8_t diff_min;
-    uint8_t diff_hour;
+    uint32_t deltaTimestamp;//x1D
 
 } setting_t;
 
@@ -151,9 +151,7 @@ void setFactorySetting(void)
     deviceSetting.short8 = 0x44;
     deviceSetting.minus = 0;
     deviceSetting.timestamp = 0;
-    deviceSetting.diff_sec = 59;
-    deviceSetting.diff_min = 59;
-    deviceSetting.diff_hour = 1;
+    deviceSetting.deltaTimestamp = 7200;
 }
 
 uint8_t prepareTwi(uint8_t mode)
@@ -441,6 +439,23 @@ void configureDevice(void)
                             configStatus = 0x00;    //exit from configuration
                         }
                         break;
+                    case CONFIG_START_PLUS_TIME:
+                        if(readTime()){
+                            deviceSetting.status = STATUS_PLUS_TIME_START;
+                            deviceSetting.minus = 0x00;
+                            deviceSetting.timestamp = getTimeStamp();
+                            if (deviceSetting.timestamp < deviceSetting.deltaTimestamp) {
+                                deviceSetting.timestamp = 86400 - deviceSetting.deltaTimestamp + deviceSetting.timestamp;
+                            } else {
+                                deviceSetting.timestamp -= deviceSetting.deltaTimestamp;
+                            }
+                            saveSettings();
+                            oldStatus = STATUS_PLUS_TIME_START;
+                            configStatus = 0x00;    //exit from configuration
+                        }
+                        break;
+                    case CONFIG_START_MINUS_TIME:
+                        break;
                     case CONFIG_REAL_TIME:
                         oldStatus = STATUS_REAL_TIME;
                         configStatus = 0x00;
@@ -530,6 +545,8 @@ int main(void)
             switch (deviceSetting.status)
             {
                 case STATUS_ZERO_TIME_START:
+                case STATUS_PLUS_TIME_START:
+                case STATUS_MINUS_TIME_START:
                     calculateTime();
                     displayTime();
                     makeBeep();
