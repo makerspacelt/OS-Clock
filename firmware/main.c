@@ -488,7 +488,11 @@ void calculateTime(void)
     uint32_t realTime;
     uint8_t temp;
     realTime = getTimeStamp();
-    realTime -= deviceSetting.timestamp;
+    if (realTime < deviceSetting.timestamp) {
+        realTime = 86400 - deviceSetting.timestamp + realTime;
+    } else {
+        realTime -= deviceSetting.timestamp;
+    }
     temp = realTime % 60;
     time.seconds = (temp / 10 << 4) | (temp % 10);
     temp = realTime % 3600 / 60;
