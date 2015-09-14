@@ -365,6 +365,7 @@ void displayTime(void)
         }
     } else {
         spiMasterTransmit(time.hours >> 4);
+        spiMasterTransmit(time.hours & 0x0F);
     }
     spiMasterTransmit(time.minutes >> 4);
     spiMasterTransmit(time.minutes & 0x0F);
