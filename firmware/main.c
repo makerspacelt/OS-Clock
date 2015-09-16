@@ -44,6 +44,7 @@
 #define CONFIG_REAL_TIME        0x15
 #define CONFIG_BEEPS            0x02
 #define CONFIG_TIME             0x03
+#define CONFIG_RESET_FACTORY    0x33
 
 volatile uint8_t oldStatus, lastSecond = 0x00;
 
@@ -474,6 +475,12 @@ void configureDevice(void)
                         break;
                     case CONFIG_REAL_TIME:
                         oldStatus = STATUS_REAL_TIME;
+                        configStatus = 0x00;
+                        break;
+                    case CONFIG_RESET_FACTORY:
+                        setFactorySetting();
+                        saveSettings();
+                        oldStatus = deviceSetting.status;
                         configStatus = 0x00;
                         break;
                 }
