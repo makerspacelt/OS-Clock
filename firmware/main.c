@@ -533,6 +533,9 @@ void calculateTime(void)
     uint8_t temp;
     realTime = getTimeStamp();
     isMinus = FALSE;
+    if (deviceSetting.status == STATUS_MINUS_TIME_START && realTime == deviceSetting.timestamp) {
+        deviceSetting.status = STATUS_ZERO_TIME_START;
+    }
     if (deviceSetting.status == STATUS_MINUS_TIME_START && realTime < deviceSetting.timestamp) {
         realTime = deviceSetting.timestamp - realTime;
         isMinus = TRUE;
