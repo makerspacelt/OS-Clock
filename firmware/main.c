@@ -404,7 +404,7 @@ uint32_t getTimeStamp(void)
 
 void configureDevice(void)
 {
-    uint8_t pressedButton, configStatus = CONFIG_START, minValue = 0x01, maxValue = 0x03;
+    uint8_t pressedButton, configStatus = CONFIG_START, minValue = 0x01, maxValue = 0x03, data[4];
     while (configStatus)
     {
         clearDisplay();
@@ -486,9 +486,17 @@ void configureDevice(void)
                     case CONFIG_RESET_FACTORY:
                         setFactorySetting();
                         saveSettings();
+
+                        data[0] = 0;
+                        data[1] = 0x12;
+                        data[2] = 0x12;
+                        data[3] = 0x12;
+                        twiWrite((uint8_t *) &data, 4);
+
                         oldStatus = deviceSetting.status;
                         configStatus = 0x00;
                         break;
+
                 }
                 break;
             case PRESSED_CANCEL:
@@ -535,6 +543,7 @@ void calculateTime(void)
     isMinus = FALSE;
     if (deviceSetting.status == STATUS_MINUS_TIME_START && realTime == deviceSetting.timestamp) {
         deviceSetting.status = STATUS_ZERO_TIME_START;
+        saveSettings();
     }
     if (deviceSetting.status == STATUS_MINUS_TIME_START && realTime < deviceSetting.timestamp) {
         realTime = deviceSetting.timestamp - realTime;
