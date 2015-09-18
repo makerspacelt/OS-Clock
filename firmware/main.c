@@ -488,9 +488,9 @@ void configureDevice(void)
                         saveSettings();
 
                         data[0] = 0;
-                        data[1] = 0x12;
-                        data[2] = 0x12;
-                        data[3] = 0x12;
+                        data[1] = 0x13;
+                        data[2] = 0x13;
+                        data[3] = 0x21;
                         twiWrite((uint8_t *) &data, 4);
 
                         oldStatus = deviceSetting.status;
