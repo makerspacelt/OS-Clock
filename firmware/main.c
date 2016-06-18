@@ -36,6 +36,7 @@
 #define STATUS_PLUS_TIME_START  0x04
 #define STATUS_MINUS_TIME_START 0x05
 
+#define CONFIG_EXIT             0x00
 #define CONFIG_START            0x01
 #define CONFIG_START_REAL_TIME  0x11
 #define CONFIG_START_ZERO_TIME  0x12
@@ -52,11 +53,11 @@ typedef struct {
     uint8_t seconds;
     uint8_t minutes;
     uint8_t hours;
-    uint8_t weekDay;
-    uint8_t day;
-    uint8_t month;
-    uint8_t year;
-    uint8_t control;
+//    uint8_t weekDay;
+//    uint8_t day;
+//    uint8_t month;
+//    uint8_t year;
+//    uint8_t control;
 } ds1307Reg_t;
 
 #define DATA_LEN 25
@@ -84,9 +85,9 @@ typedef struct {
     uint8_t short7;
     uint8_t short8;
 
-    uint32_t timestamp;     //0x18
+    uint32_t zeroTime;     //0x18
 
-    uint32_t deltaTimestamp;//0x1C
+    uint32_t deltaTime;    //0x1C
 
 } setting_t;
 
@@ -149,8 +150,8 @@ void setFactorySetting(void)
     deviceSetting.short6 = 0x29;
     deviceSetting.short7 = 0x43;
     deviceSetting.short8 = 0x44;
-    deviceSetting.timestamp = 0;
-    deviceSetting.deltaTimestamp = 1800;
+    deviceSetting.zeroTime = 0;
+    deviceSetting.deltaTime = 900;
 }
 
 uint8_t prepareTwi(uint8_t mode)
@@ -172,10 +173,7 @@ uint8_t prepareTwi(uint8_t mode)
     // wait for SLA transmitted
     while (!(TWCR & (1<<TWINT)));
     // check status code
-    if (mode == 0 && TW_STATUS == TW_MT_SLA_ACK){
-        return TRUE;
-    }
-    if (mode == 1 && TW_STATUS == TW_MR_SLA_ACK){
+    if ((mode == 0 && TW_STATUS == TW_MT_SLA_ACK) || (mode == 1 && TW_STATUS == TW_MR_SLA_ACK)){
         return TRUE;
     }
     return FALSE;
@@ -339,12 +337,12 @@ void renewDisplay(void)
 
 void clearDisplay(void)
 {
-    spiMasterTransmit(0x10);
-    spiMasterTransmit(0x10);
-    spiMasterTransmit(0x10);
-    spiMasterTransmit(0x10);
-    spiMasterTransmit(0x10);
-    spiMasterTransmit(0x10);
+    spiMasterTransmit(0xFF);
+    spiMasterTransmit(0xFF);
+    spiMasterTransmit(0xFF);
+    spiMasterTransmit(0xFF);
+    spiMasterTransmit(0xFF);
+    spiMasterTransmit(0xFF);
     renewDisplay();
 }
 
@@ -405,7 +403,7 @@ uint32_t getTimeStamp(void)
 void configureDevice(void)
 {
     uint8_t pressedButton, configStatus = CONFIG_START, minValue = 0x01, maxValue = 0x03, data[4];
-    while (configStatus)
+    while (configStatus != CONFIG_EXIT)
     {
         clearDisplay();
         //display status
@@ -442,61 +440,60 @@ void configureDevice(void)
                         break;
                     case CONFIG_START_REAL_TIME:
                         oldStatus = STATUS_REAL_TIME_START;
-                        configStatus = 0x00;
+                        configStatus = CONFIG_EXIT;
                         break;
                     case CONFIG_START_ZERO_TIME:
                         if(readTime()){
                             deviceSetting.status = STATUS_ZERO_TIME_START;
-                            deviceSetting.timestamp = getTimeStamp();
+                            deviceSetting.zeroTime = getTimeStamp();
                             saveSettings();
                             oldStatus = STATUS_ZERO_TIME_START;
-                            configStatus = 0x00;    //exit from configuration
+                            configStatus = CONFIG_EXIT;
                         }
                         break;
                     case CONFIG_START_PLUS_TIME:
                         if(readTime()){
                             deviceSetting.status = STATUS_PLUS_TIME_START;
-                            deviceSetting.timestamp = getTimeStamp();
-                            if (deviceSetting.timestamp < deviceSetting.deltaTimestamp) {
-                                deviceSetting.timestamp = 86400 - deviceSetting.deltaTimestamp + deviceSetting.timestamp;
+                            deviceSetting.zeroTime = getTimeStamp();
+                            if (deviceSetting.zeroTime < deviceSetting.deltaTime) {
+                                deviceSetting.zeroTime = 86400 - deviceSetting.deltaTime + deviceSetting.zeroTime;
                             } else {
-                                deviceSetting.timestamp -= deviceSetting.deltaTimestamp;
+                                deviceSetting.zeroTime -= deviceSetting.deltaTime;
                             }
                             saveSettings();
                             oldStatus = STATUS_PLUS_TIME_START;
-                            configStatus = 0x00;    //exit from configuration
+                            configStatus = CONFIG_EXIT;
                         }
                         break;
                     case CONFIG_START_MINUS_TIME:
                         if(readTime()){
                             deviceSetting.status = STATUS_MINUS_TIME_START;
-                            deviceSetting.timestamp = getTimeStamp() + deviceSetting.deltaTimestamp;
-                            if (deviceSetting.timestamp > 86400) {
-                                deviceSetting.timestamp -= 86400;
+                            deviceSetting.zeroTime = getTimeStamp() + deviceSetting.deltaTime;
+                            if (deviceSetting.zeroTime > 86400) {
+                                deviceSetting.zeroTime -= 86400;
                             }
                             saveSettings();
                             oldStatus = STATUS_MINUS_TIME_START;
-                            configStatus = 0x00;    //exit from configuration
+                            configStatus = CONFIG_EXIT;
                         }
                         break;
                     case CONFIG_REAL_TIME:
                         oldStatus = STATUS_REAL_TIME;
-                        configStatus = 0x00;
+                        configStatus = CONFIG_EXIT;
                         break;
                     case CONFIG_RESET_FACTORY:
                         setFactorySetting();
                         saveSettings();
 
                         data[0] = 0;
-                        data[1] = 0x13;
-                        data[2] = 0x13;
-                        data[3] = 0x21;
+                        data[1] = 0x00;
+                        data[2] = 0x00;
+                        data[3] = 0x01;
                         twiWrite((uint8_t *) &data, 4);
 
                         oldStatus = deviceSetting.status;
-                        configStatus = 0x00;
+                        configStatus = CONFIG_EXIT;
                         break;
-
                 }
                 break;
             case PRESSED_CANCEL:
@@ -541,17 +538,17 @@ void calculateTime(void)
     uint8_t temp;
     realTime = getTimeStamp();
     isMinus = FALSE;
-    if (deviceSetting.status == STATUS_MINUS_TIME_START && realTime == deviceSetting.timestamp) {
+    if (deviceSetting.status == STATUS_MINUS_TIME_START && realTime == deviceSetting.zeroTime) {
         deviceSetting.status = STATUS_ZERO_TIME_START;
         saveSettings();
     }
-    if (deviceSetting.status == STATUS_MINUS_TIME_START && realTime < deviceSetting.timestamp) {
-        realTime = deviceSetting.timestamp - realTime;
+    if (deviceSetting.status == STATUS_MINUS_TIME_START && realTime < deviceSetting.zeroTime) {
+        realTime = deviceSetting.zeroTime - realTime;
         isMinus = TRUE;
-    } else if (realTime < deviceSetting.timestamp) {
-        realTime = 86400 - deviceSetting.timestamp + realTime;
+    } else if (realTime < deviceSetting.zeroTime) {
+        realTime = 86400 - deviceSetting.zeroTime + realTime;
     } else {
-        realTime -= deviceSetting.timestamp;
+        realTime -= deviceSetting.zeroTime;
     }
     temp = realTime % 60;
     time.seconds = (temp / 10 << 4) | (temp % 10);
