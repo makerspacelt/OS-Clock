@@ -538,8 +538,8 @@ void calculateTime(void)
         deviceSetting.status = STATUS_ZERO_TIME_START;
         saveSettings();
     }
-    if (deviceSetting.status == STATUS_MINUS_TIME_START && realTime < deviceSetting.zeroTime) {
-        realTime = deviceSetting.zeroTime - realTime;
+    if (deviceSetting.status == STATUS_MINUS_TIME_START && realTime > deviceSetting.zeroTime) {
+        realTime = 86399 - realTime + deviceSetting.zeroTime;
         isMinus = TRUE;
     } else if (realTime < deviceSetting.zeroTime) {
         realTime = 86400 - deviceSetting.zeroTime + realTime;
