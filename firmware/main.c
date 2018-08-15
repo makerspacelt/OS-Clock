@@ -36,18 +36,18 @@
 #define STATUS_PLUS_TIME_START  0x04
 #define STATUS_MINUS_TIME_START 0x05
 
-#define CONFIG_EXIT             0x00
-#define CONFIG_START            0x01
-#define CONFIG_START_REAL_TIME  0x11
-#define CONFIG_START_ZERO_TIME  0x12
-#define CONFIG_START_PLUS_TIME  0x13
-#define CONFIG_START_MINUS_TIME 0x14
-#define CONFIG_SHOW_REAL_TIME   0x15
-#define CONFIG_BEEPS            0x02
-#define CONFIG_LONG_BEEPS_COUNT 0x21
+#define CONFIG_EXIT              0x00
+#define CONFIG_START             0x01
+#define CONFIG_START_REAL_TIME   0x11
+#define CONFIG_START_ZERO_TIME   0x12
+#define CONFIG_START_PLUS_TIME   0x13
+#define CONFIG_START_MINUS_TIME  0x14
+#define CONFIG_SHOW_REAL_TIME    0x15
+#define CONFIG_BEEPS             0x02
+#define CONFIG_LONG_BEEPS_COUNT  0x21
 #define CONFIG_SHORT_BEEPS_COUNT 0x22
-#define CONFIG_TIME             0x03
-#define CONFIG_RESET_FACTORY    0x33
+#define CONFIG_TIME              0x03
+#define CONFIG_RESET_FACTORY     0x33
 
 volatile uint8_t oldStatus, lastSecond = 0x00, isMinus = FALSE;
 
