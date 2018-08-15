@@ -49,7 +49,7 @@
 #define CONFIG_TIME              0x03
 #define CONFIG_RESET_FACTORY     0x33
 
-volatile uint8_t oldStatus, lastSecond = 0x00, isMinus = FALSE;
+volatile uint8_t oldStatus, lastSecond = 0xFF, isMinus = FALSE;
 
 typedef struct {
     uint8_t seconds;
@@ -595,7 +595,6 @@ void makeBeep(void){
             PORTD |= (1<<BUZZER_SHORT);
             _delay_ms(150);
             PORTD &= ~(1<<BUZZER_SHORT);
-            lastSecond = time.seconds;
             break;
         }
         tmp++;
@@ -606,11 +605,11 @@ void makeBeep(void){
             PORTD |= (1<<BUZZER_LONG);
             _delay_ms(350);
             PORTD &= ~(1<<BUZZER_LONG);
-            lastSecond = time.seconds;
             break;
         }
         tmp++;
     }
+    lastSecond = time.seconds;
 }
 
 void calculateTime(void)
