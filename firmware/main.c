@@ -460,7 +460,7 @@ uint8_t configBeepsCount(uint8_t minValue, uint8_t maxValue, uint8_t value)
                 }
                 break;
             case PRESSED_CANCEL:
-                value = oldValue;
+                value = oldValue; // exit will be assign on ENTER
             case PRESSED_ENTER:
                 configStatus = CONFIG_EXIT;
                 break;
