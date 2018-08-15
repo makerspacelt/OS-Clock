@@ -402,9 +402,9 @@ uint8_t getPressedButton(void)
 {
     uint8_t pressedButton;
     // read pressed button
-    while((PIND & 0x3C) != 0x3C) {_delay_ms(15);}
+    while((PIND & 0x3C) != 0x3C) {_delay_ms(30);}
     while((PIND & 0x3C) == 0x3C) {;}
-    _delay_ms(15);
+    _delay_ms(30);
     pressedButton = (0x3C & ~PIND);
     while((PIND & 0x3C) != 0x3C) {;}
 
@@ -496,25 +496,25 @@ void configureDevice(void)
             case PRESSED_ENTER:
                 switch (configStatus)
                 {
-                    case CONFIG_START:
-                    case CONFIG_BEEPS:
+                    case CONFIG_START: //0x01
+                    case CONFIG_BEEPS: //0x02
                         minValue = (configStatus << 4) | 0x01;
                         maxValue = (configStatus << 4) | 0x05;
                         configStatus = minValue;
                         break;
-                    case CONFIG_TIME:
+                    case CONFIG_TIME: //0x03
                         minValue = (CONFIG_TIME << 4) | 0x01;
                         maxValue = (CONFIG_TIME << 4) | 0x03;
                         configStatus = minValue;
                         break;
-                    case CONFIG_START_REAL_TIME:
+                    case CONFIG_START_REAL_TIME: //0x11
                         deviceSetting.status = STATUS_REAL_TIME_START;
                         deviceSetting.zeroTime = 0;
                         saveSettings();
                         oldStatus = STATUS_REAL_TIME_START;
                         configStatus = CONFIG_EXIT;
                         break;
-                    case CONFIG_START_ZERO_TIME:
+                    case CONFIG_START_ZERO_TIME: //0x12
                         if(readTime()){
                             deviceSetting.status = STATUS_ZERO_TIME_START;
                             deviceSetting.zeroTime = getTimeStamp();
@@ -523,7 +523,7 @@ void configureDevice(void)
                             configStatus = CONFIG_EXIT;
                         }
                         break;
-                    case CONFIG_START_PLUS_TIME:
+                    case CONFIG_START_PLUS_TIME: //0x13
                         if(readTime()){
                             deviceSetting.status = STATUS_PLUS_TIME_START;
                             deviceSetting.zeroTime = getTimeStamp();
@@ -537,7 +537,7 @@ void configureDevice(void)
                             configStatus = CONFIG_EXIT;
                         }
                         break;
-                    case CONFIG_START_MINUS_TIME:
+                    case CONFIG_START_MINUS_TIME: //0x14
                         if(readTime()){
                             deviceSetting.status = STATUS_MINUS_TIME_START;
                             deviceSetting.zeroTime = getTimeStamp() + deviceSetting.deltaTime;
@@ -651,6 +651,9 @@ int main(void)
     if (deviceSetting.saved == FALSE) {
         setFactorySetting();
     }
+
+    // wait before start working
+    _delay_ms(500);
 
     // Repeat indefinitely
     for(;;)
