@@ -42,7 +42,7 @@
 #define CONFIG_START_ZERO_TIME  0x12
 #define CONFIG_START_PLUS_TIME  0x13
 #define CONFIG_START_MINUS_TIME 0x14
-#define CONFIG_REAL_TIME        0x15
+#define CONFIG_SHOW_REAL_TIME   0x15
 #define CONFIG_BEEPS            0x02
 #define CONFIG_LONG_BEEPS_COUNT 0x21
 #define CONFIG_TIME             0x03
@@ -549,7 +549,7 @@ void configureDevice(void)
                             configStatus = CONFIG_EXIT;
                         }
                         break;
-                    case CONFIG_REAL_TIME:
+                    case CONFIG_SHOW_REAL_TIME: //0x15
                         oldStatus = STATUS_REAL_TIME;
                         configStatus = CONFIG_EXIT;
                         break;
