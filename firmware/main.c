@@ -44,6 +44,7 @@
 #define CONFIG_START_MINUS_TIME 0x14
 #define CONFIG_REAL_TIME        0x15
 #define CONFIG_BEEPS            0x02
+#define CONFIG_LONG_BEEPS_COUNT 0x21
 #define CONFIG_TIME             0x03
 #define CONFIG_RESET_FACTORY    0x33
 
@@ -433,9 +434,44 @@ uint32_t getTimeStamp(void)
     return full;
 }
 
+uint8_t configBeepsCount(uint8_t minValue, uint8_t maxValue, uint8_t value)
+{
+    uint8_t pressedButton, configStatus = CONFIG_START, oldValue = value;
+    while (configStatus != CONFIG_EXIT)
+    {
+        clearDisplay();
+        _delay_ms(100);
+        displayChar(value);
+        pressedButton = getPressedButton();
+
+        switch (pressedButton)
+        {
+            case PRESSED_UP:
+                value++;
+                if (value > maxValue) {
+                    value = minValue;
+                }
+                break;
+            case PRESSED_DOWN:
+                value--;
+                if (value < minValue) {
+                    value = maxValue;
+                }
+                break;
+            case PRESSED_CANCEL:
+                value = oldValue;
+            case PRESSED_ENTER:
+                configStatus = CONFIG_EXIT;
+                break;
+        }
+    }
+
+    return value;
+}
+
 void configureDevice(void)
 {
-    uint8_t pressedButton, configStatus = CONFIG_START, minValue = 0x01, maxValue = 0x03, data[4];
+    uint8_t pressedButton, configStatus = CONFIG_START, minValue = 0x01, maxValue = 0x03, value;
     while (configStatus != CONFIG_EXIT)
     {
         clearDisplay();
@@ -517,7 +553,14 @@ void configureDevice(void)
                         oldStatus = STATUS_REAL_TIME;
                         configStatus = CONFIG_EXIT;
                         break;
-                    case CONFIG_RESET_FACTORY:
+                    case CONFIG_LONG_BEEPS_COUNT: //0x21
+                        value = configBeepsCount(0, 4, deviceSetting.longCount);
+                        if (value != deviceSetting.longCount) {
+                            deviceSetting.longCount = value;
+                            saveSettings();
+                        }
+                        break;
+                    case CONFIG_RESET_FACTORY: //0x33
                         setFactorySetting();
                         saveSettings();
                         oldStatus = deviceSetting.status;
