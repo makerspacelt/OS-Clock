@@ -13,6 +13,9 @@
 #define NUMBER_7 0x34
 #define NUMBER_8 0x7F
 #define NUMBER_9 0x7E
+#define CHAR_MINUS 0xFE
+#define CHAR_SPACE 0xFF
+
 
 #define FALSE 0
 #define TRUE 1
@@ -317,11 +320,12 @@ void spiMasterTransmit(uint8_t cData)
         case 0x0F:
             cData = 0x59;
             break;
-        case 0xFE:  //minus
+        case CHAR_MINUS:
             cData = 0x08;
             break;
-        default:
+        case CHAR_SPACE:
             cData = 0x00;
+            break;
     }
     /* Start transmission */
     SPDR = cData | 0x80;
@@ -339,12 +343,12 @@ void renewDisplay(void)
 
 void clearDisplay(void)
 {
-    spiMasterTransmit(0xFF);
-    spiMasterTransmit(0xFF);
-    spiMasterTransmit(0xFF);
-    spiMasterTransmit(0xFF);
-    spiMasterTransmit(0xFF);
-    spiMasterTransmit(0xFF);
+    spiMasterTransmit(CHAR_SPACE);
+    spiMasterTransmit(CHAR_SPACE);
+    spiMasterTransmit(CHAR_SPACE);
+    spiMasterTransmit(CHAR_SPACE);
+    spiMasterTransmit(CHAR_SPACE);
+    spiMasterTransmit(CHAR_SPACE);
     renewDisplay();
 }
 
@@ -353,12 +357,12 @@ void displayTime(void)
     // send data for display
     if ((time.hours & 0xF0) == 0x00) {
         if (isMinus == TRUE) {
-            spiMasterTransmit(0xFE);
+            spiMasterTransmit(CHAR_MINUS);
         } else {
-            spiMasterTransmit(0xFF);
+            spiMasterTransmit(CHAR_SPACE);
         }
         if ((time.hours & 0x0F) == 0x00) {
-            spiMasterTransmit(0xFF);
+            spiMasterTransmit(CHAR_SPACE);
         } else {
             spiMasterTransmit(time.hours & 0x0F);
         }
