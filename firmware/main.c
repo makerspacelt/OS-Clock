@@ -380,6 +380,23 @@ void displayChar(uint8_t data)
     renewDisplay();
 }
 
+//void displayFullChar(uint8_t data)
+//{
+//    spiMasterTransmit(data >> 4);
+//    spiMasterTransmit(data & 0x0F);
+//    renewDisplay();
+//}
+//
+//void displayData(uint8_t *data, uint8_t count)
+//{
+//    uint8_t tmp;
+//    do {
+//        tmp = *data++;
+//        displayFullChar(tmp);
+//        _delay_ms(3000);
+//    } while ( --count != 0 );
+//}
+
 uint8_t getPressedButton(void)
 {
     uint8_t pressedButton;
