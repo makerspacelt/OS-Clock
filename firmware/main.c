@@ -395,9 +395,25 @@ uint8_t getPressedButton(void)
 
 uint32_t getTimeStamp(void)
 {
-    return (time.seconds >> 4) * 10 + (time.seconds & 0x0F) +
-        (time.minutes >> 4) * 10 * 60 + (time.minutes & 0x0F) * 60 +
-        (time.hours >> 4) * 10 * 3600 + (time.hours & 0x0F) * 3600;
+    uint32_t full = 0, tmp;
+    tmp = (time.seconds >> 4) * 10;
+    full += tmp;
+    full += (time.seconds & 0x0F);
+    tmp = (time.minutes >> 4) * 10;
+    tmp *= 60;
+    full += tmp;
+    full += (time.minutes & 0x0F) * 60;
+    tmp = (time.hours >> 4);
+    tmp *= 10;
+    tmp *= 60;
+    tmp *= 60;
+    full += tmp;
+    tmp = (time.hours & 0x0F);
+    tmp *= 60;
+    tmp *= 60;
+    full += tmp;
+
+    return full;
 }
 
 void configureDevice(void)
