@@ -473,6 +473,7 @@ uint8_t configBeepsCount(uint8_t minValue, uint8_t maxValue, uint8_t value)
 void configureDevice(void)
 {
     uint8_t pressedButton, configStatus = CONFIG_START, minValue = 0x01, maxValue = 0x03, value;
+    deviceSetting.status = oldStatus;
     while (configStatus != CONFIG_EXIT)
     {
         clearDisplay();
@@ -573,7 +574,6 @@ void configureDevice(void)
                     case CONFIG_RESET_FACTORY: //0x33
                         setFactorySetting();
                         saveSettings();
-                        oldStatus = deviceSetting.status;
                         configStatus = CONFIG_EXIT;
                         break;
                 }
@@ -585,7 +585,6 @@ void configureDevice(void)
                 break;
         }
     }
-    deviceSetting.status = oldStatus;
 }
 
 void makeBeep(void){
@@ -661,9 +660,6 @@ int main(void)
     if (deviceSetting.saved == FALSE) {
         setFactorySetting();
     }
-
-    // wait before start working
-    _delay_ms(500);
 
     // Repeat indefinitely
     for(;;)
