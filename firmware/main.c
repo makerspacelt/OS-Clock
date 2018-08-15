@@ -45,6 +45,7 @@
 #define CONFIG_SHOW_REAL_TIME   0x15
 #define CONFIG_BEEPS            0x02
 #define CONFIG_LONG_BEEPS_COUNT 0x21
+#define CONFIG_SHORT_BEEPS_COUNT 0x22
 #define CONFIG_TIME             0x03
 #define CONFIG_RESET_FACTORY    0x33
 
@@ -557,6 +558,13 @@ void configureDevice(void)
                         value = configBeepsCount(0, 4, deviceSetting.longCount);
                         if (value != deviceSetting.longCount) {
                             deviceSetting.longCount = value;
+                            saveSettings();
+                        }
+                        break;
+                    case CONFIG_SHORT_BEEPS_COUNT: //0x22
+                        value = configBeepsCount(0, 8, deviceSetting.shortCount);
+                        if (value != deviceSetting.shortCount) {
+                            deviceSetting.shortCount = value;
                             saveSettings();
                         }
                         break;
