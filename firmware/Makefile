@@ -17,8 +17,8 @@ MCU = atmega8
 
 
 # Processor frequency.
-#     This will define a symbol, F_CPU, in all source code files equal to the 
-#     processor frequency. You can then use this symbol in your source code to 
+#     This will define a symbol, F_CPU, in all source code files equal to the
+#     processor frequency. You can then use this symbol in your source code to
 #     calculate timings. Do NOT tack on a 'UL' at the end, this will be done
 #     automatically to create a 32-bit value in your source code.
 #     Typical values are:
@@ -43,6 +43,7 @@ FORMAT = ihex
 
 # Target file name (without extension).
 TARGET = main
+TARGET_DEV = dev_main
 
 
 # Object files directory
@@ -55,7 +56,7 @@ OBJDIR = .
 SRC = $(TARGET).c
 
 
-# Optimization level, can be [0, 1, 2, 3, s]. 
+# Optimization level, can be [0, 1, 2, 3, s].
 #     0 = turn off optimization. s = optimize for size.
 #     (Note: 3 is not always the best optimization level. See avr-libc FAQ.)
 OPT = s
@@ -114,6 +115,7 @@ LDFLAGS += $(MATH_LIB)
 AVRDUDE_PROGRAMMER = usbasp
 
 AVRDUDE_WRITE_FLASH = -U flash:w:$(TARGET).hex
+AVRDUDE_READ_FLASH = -U flash:r:$(TARGET_DEV).hex:r
 #AVRDUDE_WRITE_EEPROM = -U eeprom:w:$(TARGET).eep
 
 # Slow down SCK clock for begin atmega programing
@@ -125,7 +127,7 @@ AVRDUDE_SCK_FREQUENCY = -B 8
 #AVRDUDE_NO_VERIFY = -V
 
 # Increase verbosity level.  Please use this when submitting bug
-# reports about avrdude. See <http://savannah.nongnu.org/projects/avrdude> 
+# reports about avrdude. See <http://savannah.nongnu.org/projects/avrdude>
 # to submit bug reports.
 #AVRDUDE_VERBOSE = -v -v
 
@@ -163,7 +165,7 @@ WINSHELL = cmd
 # English
 MSG_BEGIN = -------- begin --------
 MSG_END = --------  end  --------
-MSG_SIZE_BEFORE = Size before: 
+MSG_SIZE_BEFORE = Size before:
 MSG_SIZE_AFTER = Size after:
 MSG_FLASH = Creating load file for Flash:
 MSG_EEPROM = Creating load file for EEPROM:
@@ -231,13 +233,13 @@ sizeafter:
 gccversion:
 	@$(CC) --version
 
+# Read the device.
+read:
+	$(AVRDUDE) $(AVRDUDE_FLAGS) $(AVRDUDE_READ_FLASH)
 
-
-# Program the device.  
+# Program the device.
 program: $(TARGET).hex $(TARGET).eep
 	$(AVRDUDE) $(AVRDUDE_FLAGS) $(AVRDUDE_WRITE_FLASH) $(AVRDUDE_WRITE_EEPROM)
-
-
 
 # Create final output files (.hex, .eep) from ELF output file.
 %.hex: %.elf
@@ -303,4 +305,4 @@ $(shell mkdir $(OBJDIR) 2>/dev/null)
 # Listing of phony targets.
 .PHONY : all begin end sizebefore sizeafter gccversion \
 build elf hex eep lss \
-clean clean_list program
+clean clean_list program read
