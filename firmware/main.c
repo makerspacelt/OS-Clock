@@ -384,9 +384,9 @@ uint8_t getPressedButton(void)
 {
     uint8_t pressedButton;
     // read pressed button
-    while((PIND & 0x3C) != 0x3C) {_delay_ms(10);}
+    while((PIND & 0x3C) != 0x3C) {_delay_ms(15);}
     while((PIND & 0x3C) == 0x3C) {;}
-    _delay_ms(10);
+    _delay_ms(15);
     pressedButton = (0x3C & ~PIND);
     while((PIND & 0x3C) != 0x3C) {;}
 
@@ -439,6 +439,9 @@ void configureDevice(void)
                         configStatus = minValue;
                         break;
                     case CONFIG_START_REAL_TIME:
+                        deviceSetting.status = STATUS_REAL_TIME_START;
+                        deviceSetting.zeroTime = 0;
+                        saveSettings();
                         oldStatus = STATUS_REAL_TIME_START;
                         configStatus = CONFIG_EXIT;
                         break;
