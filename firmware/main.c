@@ -487,13 +487,6 @@ void configureDevice(void)
                     case CONFIG_RESET_FACTORY:
                         setFactorySetting();
                         saveSettings();
-
-                        data[0] = 0;
-                        data[1] = 0x00;
-                        data[2] = 0x00;
-                        data[3] = 0x01;
-                        twiWrite((uint8_t *) &data, 4);
-
                         oldStatus = deviceSetting.status;
                         configStatus = CONFIG_EXIT;
                         break;
