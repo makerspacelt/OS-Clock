@@ -551,6 +551,8 @@ void configureDevice(void)
                         }
                         break;
                     case CONFIG_SHOW_REAL_TIME: //0x15
+                        deviceSetting.status = STATUS_REAL_TIME;
+                        saveSettings();
                         oldStatus = STATUS_REAL_TIME;
                         configStatus = CONFIG_EXIT;
                         break;
