@@ -472,8 +472,8 @@ void configureDevice(void)
                         if(readTime()){
                             deviceSetting.status = STATUS_MINUS_TIME_START;
                             deviceSetting.zeroTime = getTimeStamp() + deviceSetting.deltaTime;
-                            if (deviceSetting.zeroTime > 86400) {
-                                deviceSetting.zeroTime -= 86400;
+                            if (deviceSetting.zeroTime > 86399) {
+                                deviceSetting.zeroTime -= 86399;
                             }
                             saveSettings();
                             oldStatus = STATUS_MINUS_TIME_START;
