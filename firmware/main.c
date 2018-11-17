@@ -3,6 +3,12 @@
 #include <avr/io.h>
 #include <util/twi.h>
 
+//  --          0x10
+// |  |     0x40    0x20
+//  --          0x08
+// |  |     0x01    0x04
+//  --          0x02
+
 #define NUMBER_0 0x77
 #define NUMBER_1 0x24
 #define NUMBER_2 0x3B
@@ -15,6 +21,30 @@
 #define NUMBER_9 0x7E
 #define CHAR_MINUS 0xFE
 #define CHAR_SPACE 0xFF
+#define CHAR_A 0x7D
+#define CHAR_B 0X4F
+#define CHAR_C 0x53
+#define CHAR_D 0x2F
+#define CHAR_E 0x5B
+#define CHAR_F 0x59
+#define CHAR_G 0x57
+#define CHAR_H 0x6D
+#define CHAR_I 0x41
+#define CHAR_Y 0x6C
+#define CHAR_J 0x27
+#define CHAR_K 0x6B
+#define CHAR_L 0x43
+#define CHAR_M 0x15
+#define CHAR_N 0x75
+#define CHAR_O 0x77
+#define CHAR_P 0x79
+#define CHAR_R 0x51
+#define CHAR_S 0x56
+#define CHAR_T 0x4B
+#define CHAR_U 0x67
+#define CHAR_V 0x07
+#define CHAR_Z 0x33
+
 
 
 #define FALSE 0
@@ -273,57 +303,126 @@ void spiMasterTransmit(uint8_t cData)
     switch (cData)
     {
         case 0x00:
+        case 0x30:
             cData = NUMBER_0;
             break;
         case 0x01:
+        case 0x31:
             cData = NUMBER_1;
             break;
         case 0x02:
+        case 0x32:
             cData = NUMBER_2;
             break;
         case 0x03:
+        case 0x33:
             cData = NUMBER_3;
             break;
         case 0x04:
+        case 0x34:
             cData = NUMBER_4;
             break;
         case 0x05:
+        case 0x35:
             cData = NUMBER_5;
             break;
         case 0x06:
+        case 0x36:
             cData = NUMBER_6;
             break;
         case 0x07:
+        case 0x37:
             cData = NUMBER_7;
             break;
         case 0x08:
+        case 0x38:
             cData = NUMBER_8;
             break;
         case 0x09:
+        case 0x39:
             cData = NUMBER_9;
             break;
         case 0x0A:
-            cData = 0x7D;
+        case 0x41:
+            cData = CHAR_A;
             break;
         case 0x0B:
-            cData = 0X4F;
+        case 0x42:
+            cData = CHAR_B;
             break;
         case 0x0C:
-            cData = 0x53;
+        case 0x43:
+            cData = CHAR_C;
             break;
         case 0x0D:
-            cData = 0x2F;
+        case 0x44:
+            cData = CHAR_D;
             break;
         case 0x0E:
-            cData = 0x5B;
+        case 0x45:
+            cData = CHAR_E;
             break;
         case 0x0F:
-            cData = 0x59;
+        case 0x46:
+            cData = CHAR_F;
+            break;
+        case 0x47:
+            cData = CHAR_G;
+            break;
+        case 0x48:
+            cData = CHAR_H;
+            break;
+        case 0x49:
+            cData = CHAR_I;
+            break;
+        case 0x4A:
+            cData = CHAR_J;
+            break;
+        case 0x4B:
+            cData = CHAR_K;
+            break;
+        case 0x4C:
+            cData = CHAR_L;
+            break;
+        case 0x4D:
+            cData = CHAR_M;
+            break;
+        case 0x4E:
+            cData = CHAR_N;
+            break;
+        case 0x4F:
+            cData = CHAR_O;
+            break;
+        case 0x50:
+            cData = CHAR_P;
+            break;
+        case 0x52:
+            cData = CHAR_R;
+            break;
+        case 0x53:
+            cData = CHAR_S;
+            break;
+        case 0x54:
+            cData = CHAR_T;
+            break;
+        case 0x55:
+            cData = CHAR_U;
+            break;
+        case 0x56:
+            cData = CHAR_V;
+            break;
+        case 0x59:
+            cData = CHAR_Y;
+            break;
+        case 0x5A:
+            cData = CHAR_Z;
             break;
         case CHAR_MINUS:
+        case 0x2D:
             cData = 0x08;
             break;
         case CHAR_SPACE:
+        case 0x20:
             cData = 0x00;
             break;
     }
