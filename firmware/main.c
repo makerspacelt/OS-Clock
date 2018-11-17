@@ -39,7 +39,7 @@
 #define CHAR_O 0x77
 #define CHAR_P 0x79
 #define CHAR_R 0x51
-#define CHAR_S 0x56
+#define CHAR_S 0x5E
 #define CHAR_T 0x4B
 #define CHAR_U 0x67
 #define CHAR_V 0x07
@@ -82,7 +82,7 @@
 #define CONFIG_TIME              0x03
 #define CONFIG_RESET_FACTORY     0x33
 
-volatile uint8_t oldStatus, lastSecond = 0xFF, isMinus = FALSE;
+volatile uint8_t oldStatus, lastSecond = 0xFF, isMinus = FALSE, showTime = FALSE;
 
 typedef struct {
     uint8_t seconds;
@@ -426,8 +426,11 @@ void spiMasterTransmit(uint8_t cData)
             cData = 0x00;
             break;
     }
+    if (showTime) {
+        cData |= 0x80;
+    }
     /* Start transmission */
-    SPDR = cData | 0x80;
+    SPDR = cData;
     /* Wait for transmission complete */
     while(!(SPSR & (1<<SPIF)))
         ;
@@ -453,6 +456,7 @@ void clearDisplay(void)
 
 void displayTime(void)
 {
+    showTime = TRUE;
     // send data for display
     if ((time.hours & 0xF0) == 0x00) {
         if (isMinus == TRUE) {
@@ -750,6 +754,27 @@ ISR(INT1_vect)
     deviceSetting.status = STATUS_CONFIG_MENU;
 }
 
+void displayHello(void)
+{
+    char hello[] = { "LABAS RYTAS" };
+    uint8_t i = 0;
+
+    showTime = FALSE;
+    while (hello[i] != 0x00) {
+        spiMasterTransmit(hello[i]);
+        renewDisplay();
+        _delay_ms(800);
+        i++;
+    }
+    i = 6;
+    while (i != 0) {
+        spiMasterTransmit(CHAR_SPACE);
+        renewDisplay();
+        _delay_ms(800);
+        i--;
+    }
+}
+
 int main(void)
 {
     init();
@@ -762,6 +787,8 @@ int main(void)
     if (deviceSetting.saved == FALSE) {
         setFactorySetting();
     }
+
+    displayHello();
 
     // Repeat indefinitely
     for(;;)
