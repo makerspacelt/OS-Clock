@@ -68,6 +68,7 @@
 #define STATUS_ZERO_TIME_START  0x03
 #define STATUS_PLUS_TIME_START  0x04
 #define STATUS_MINUS_TIME_START 0x05
+#define STATUS_DEMO             0x06
 
 #define CONFIG_EXIT              0x00
 #define CONFIG_START             0x01
@@ -80,6 +81,7 @@
 #define CONFIG_LONG_BEEPS_COUNT  0x21
 #define CONFIG_SHORT_BEEPS_COUNT 0x22
 #define CONFIG_TIME              0x03
+#define CONFIG_DEMO              0x31
 #define CONFIG_RESET_FACTORY     0x33
 
 volatile uint8_t oldStatus, lastSecond = 0xFF, isMinus = FALSE, showTime = FALSE;
@@ -171,8 +173,8 @@ void setFactorySetting(void)
     deviceSetting.firstAddress = SETTING_ADDRESS;   //0x08
     deviceSetting.saved = FALSE;                    //0x00
     deviceSetting.status = STATUS_REAL_TIME;        //0x00
-    deviceSetting.longCount = 0x01;
-    deviceSetting.shortCount = 0x02;
+    deviceSetting.longCount = 0x04;
+    deviceSetting.shortCount = 0x08;
     deviceSetting.long1 = 0x00;
     deviceSetting.long2 = 0x15;
     deviceSetting.long3 = 0x30;
@@ -293,6 +295,13 @@ void readSettings(void)
 
 void saveSettings(void)
 {
+    uint8_t data[4];
+    data[0] = 0;
+    data[1] = 0x00;
+    data[2] = 0x55;
+    data[3] = 0x57;
+    twiWrite((uint8_t *) &data, 4);
+
     deviceSetting.saved = TRUE;
     deviceSetting.firstAddress = SETTING_ADDRESS;
     twiWrite((uint8_t *) &deviceSetting, DATA_LEN + 1);
@@ -429,6 +438,15 @@ void spiMasterTransmit(uint8_t cData)
     if (showTime) {
         cData |= 0x80;
     }
+    /* Start transmission */
+    SPDR = cData;
+    /* Wait for transmission complete */
+    while(!(SPSR & (1<<SPIF)))
+        ;
+}
+
+void spiRawMasterTransmit(uint8_t cData)
+{
     /* Start transmission */
     SPDR = cData;
     /* Wait for transmission complete */
@@ -678,6 +696,11 @@ void configureDevice(void)
                             saveSettings();
                         }
                         break;
+                    case CONFIG_DEMO: //0x31
+                        deviceSetting.status = STATUS_DEMO;
+                        oldStatus = STATUS_DEMO;
+                        configStatus = CONFIG_EXIT;
+                        break;
                     case CONFIG_RESET_FACTORY: //0x33
                         setFactorySetting();
                         saveSettings();
@@ -756,22 +779,41 @@ ISR(INT1_vect)
 
 void displayHello(void)
 {
-    char hello[] = { "LABAS RYTAS" };
+    char hello[] = { "LABAS" };
     uint8_t i = 0;
 
     showTime = FALSE;
     while (hello[i] != 0x00) {
         spiMasterTransmit(hello[i]);
         renewDisplay();
-        _delay_ms(800);
+        _delay_ms(700);
         i++;
     }
     i = 6;
     while (i != 0) {
         spiMasterTransmit(CHAR_SPACE);
         renewDisplay();
-        _delay_ms(800);
+        _delay_ms(700);
         i--;
+    }
+}
+
+void displayDemo(void)
+{
+    uint8_t data;
+    showTime = FALSE;
+    for (uint8_t j = 0; j < 6; j++) {
+        data = 0x01;
+        for (uint8_t i = 0; i < 8; i++) {
+            spiRawMasterTransmit(data);
+            for (uint8_t k = 0; k < j; k++) {
+                spiMasterTransmit(CHAR_SPACE);
+            }
+            renewDisplay();
+            _delay_ms(300);
+            data = data << 1;
+            clearDisplay();
+        }
     }
 }
 
@@ -817,6 +859,10 @@ int main(void)
                     configureDevice();
                     _delay_ms(100);
                     sei();
+                    break;
+                case STATUS_DEMO:
+                    displayDemo();
+                    _delay_ms(900);
                     break;
             }
         }
