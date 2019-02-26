@@ -58,10 +58,6 @@
 #define BUZZER_LONG     PD6     // PD6
 #define BUZZER_SHORT    PD7     // PD7
 
-//volatile uint8_t kint, l = ' ', kurisec = 59;
-//volatile uint8_t buff[8], ilg;
-//volatile uint8_t *Buffer = buff;
-
 #define STATUS_REAL_TIME        0x00
 #define STATUS_CONFIG_MENU      0x01
 #define STATUS_REAL_TIME_START  0x02
@@ -620,7 +616,6 @@ void configureDevice(void)
                         deviceSetting.status = STATUS_REAL_TIME_START;
                         deviceSetting.zeroTime = 0;
                         saveSettings();
-                        oldStatus = STATUS_REAL_TIME_START;
                         configStatus = CONFIG_EXIT;
                         break;
                     case CONFIG_START_ZERO_TIME: //0x12
@@ -628,7 +623,6 @@ void configureDevice(void)
                             deviceSetting.status = STATUS_ZERO_TIME_START;
                             deviceSetting.zeroTime = getTimeStamp();
                             saveSettings();
-                            oldStatus = STATUS_ZERO_TIME_START;
                             configStatus = CONFIG_EXIT;
                         }
                         break;
@@ -696,6 +690,9 @@ void configureDevice(void)
 
 void makeBeep(void){
     uint8_t *tmp;
+    if (isMinus == TRUE){
+        return;
+    }
     tmp = (uint8_t *) &deviceSetting.short1;
     for(uint8_t i = 0; i < deviceSetting.shortCount; i++){
         if((time.seconds == *tmp) && (lastSecond != time.seconds)){
@@ -800,11 +797,6 @@ int main(void)
                 case STATUS_PLUS_TIME_START:
                 case STATUS_MINUS_TIME_START:
                     calculateTime();
-                    displayTime();
-                    if (isMinus == FALSE){
-                        makeBeep();
-                    }
-                    break;
                 case STATUS_REAL_TIME_START:
                     displayTime();
                     makeBeep();
