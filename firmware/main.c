@@ -607,11 +607,11 @@ void configureDevice(void)
                         maxValue = (configStatus << 4) | 0x05;
                         configStatus = minValue;
                         break;
-                    case CONFIG_TIME: //0x03
-                        minValue = (CONFIG_TIME << 4) | 0x01;
-                        maxValue = (CONFIG_TIME << 4) | 0x03;
-                        configStatus = minValue;
-                        break;
+//                    case CONFIG_TIME: //0x03
+//                        minValue = (CONFIG_TIME << 4) | 0x01;
+//                        maxValue = (CONFIG_TIME << 4) | 0x03;
+//                        configStatus = minValue;
+//                        break;
                     case CONFIG_START_REAL_TIME: //0x11
                         deviceSetting.status = STATUS_REAL_TIME_START;
                         deviceSetting.zeroTime = 0;
@@ -644,7 +644,7 @@ void configureDevice(void)
                         if(readTime()){
                             deviceSetting.status = STATUS_MINUS_TIME_START;
                             deviceSetting.zeroTime = getTimeStamp() + deviceSetting.deltaTime;
-                            if (deviceSetting.zeroTime > 86399) {
+                            if (deviceSetting.zeroTime >= 86399) {
                                 deviceSetting.zeroTime -= 86399;
                             }
                             saveSettings();
