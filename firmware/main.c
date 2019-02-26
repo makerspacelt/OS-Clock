@@ -75,6 +75,8 @@
 #define CONFIG_BEEPS             0x02
 #define CONFIG_LONG_BEEPS_COUNT  0x21
 #define CONFIG_SHORT_BEEPS_COUNT 0x22
+#define CONFIG_LONG_BEEPS        0x23
+#define CONFIG_SHORT_BEEPS       0x24
 #define CONFIG_TIME              0x03
 #define CONFIG_RESET_FACTORY     0x33
 
@@ -573,6 +575,56 @@ uint8_t configBeepsCount(uint8_t minValue, uint8_t maxValue, uint8_t value)
     return value;
 }
 
+void configBeeps(uint8_t minValue, uint8_t maxValue, uint8_t count, uint8_t *place)
+{
+    uint8_t pressedButton, configStatus = CONFIG_START, hasChange = FALSE, step = 1, value = *place;
+    while (configStatus != CONFIG_EXIT)
+    {
+        clearDisplay();
+        _delay_ms(100);
+        displayChar(start);
+        spiMasterTransmit(CHAR_SPACE);
+        displayChar(value);
+        pressedButton = getPressedButton();
+
+        switch (pressedButton)
+        {
+            case PRESSED_UP:
+                value++;
+                if (value > maxValue) {
+                    value = minValue;
+                }
+                break;
+            case PRESSED_DOWN:
+                value--;
+                if (value < minValue) {
+                    value = maxValue;
+                }
+                break;
+            case PRESSED_CANCEL:
+                configStatus = CONFIG_EXIT;
+                hasChange = FALSE;
+                break;
+            case PRESSED_ENTER:
+                if (*place != value) {
+                    *place = value;
+                    hasChange = TRUE;
+                }
+                place++;
+                value = *place;
+                if (step >= count) {
+                    configStatus = CONFIG_EXIT;
+                }
+                step++;
+                break;
+        }
+    }
+    if (changed == TRUE ) {
+        saveSettings();
+    }
+    readSettings();
+}
+
 void configureDevice(void)
 {
     uint8_t pressedButton, configStatus = CONFIG_START, minValue = 0x01, maxValue = 0x03, value;
@@ -671,6 +723,12 @@ void configureDevice(void)
                             deviceSetting.shortCount = value;
                             saveSettings();
                         }
+                        break;
+                    case CONFIG_LONG_BEEPS: //0x23
+                        configBeeps(0, 59, deviceSetting.longCount, (uint8_t *) &deviceSetting.long1);
+                        break;
+                    case CONFIG_LONG_BEEPS: //0x24
+                        configBeeps(0, 59, deviceSetting.shortCount, (uint8_t *) &deviceSetting.short1);
                         break;
                     case CONFIG_RESET_FACTORY: //0x33
                         setFactorySetting();
