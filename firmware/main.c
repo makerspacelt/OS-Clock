@@ -820,21 +820,21 @@ ISR(INT1_vect)
 
 void displayHello(void)
 {
-    char hello[] = { "LABAS RYTAS" };
+    char hello[] = { "LABAS" };
     uint8_t i = 0;
 
     showTime = FALSE;
     while (hello[i] != 0x00) {
         spiMasterTransmit(hello[i]);
         renewDisplay();
-        _delay_ms(800);
+        _delay_ms(400);
         i++;
     }
     i = 6;
     while (i != 0) {
         spiMasterTransmit(CHAR_SPACE);
         renewDisplay();
-        _delay_ms(800);
+        _delay_ms(400);
         i--;
     }
 }
