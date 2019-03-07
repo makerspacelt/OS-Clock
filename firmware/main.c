@@ -540,13 +540,12 @@ uint32_t getTimeStamp(void)
     return full;
 }
 
-uint8_t configBeepsCount(uint8_t minValue, uint8_t maxValue, uint8_t value)
+uint8_t configBeepsCount(int8_t minValue, int8_t maxValue, int8_t value)
 {
     uint8_t pressedButton, configStatus = CONFIG_START, oldValue = value;
     while (configStatus != CONFIG_EXIT)
     {
         clearDisplay();
-        _delay_ms(100);
         displayChar(value);
         pressedButton = getPressedButton();
 
@@ -577,12 +576,13 @@ uint8_t configBeepsCount(uint8_t minValue, uint8_t maxValue, uint8_t value)
 
 void configBeeps(uint8_t minValue, uint8_t maxValue, uint8_t count, uint8_t *place)
 {
-    uint8_t pressedButton, configStatus = CONFIG_START, hasChange = FALSE, step = 1, value = *place;
+    uint8_t pressedButton, configStatus = CONFIG_START, hasChange = FALSE, step = 1;
+    int8_t value = *place;
     while (configStatus != CONFIG_EXIT)
     {
         clearDisplay();
-        _delay_ms(100);
-        displayChar(start);
+        displayChar(step);
+        spiMasterTransmit(CHAR_SPACE);
         spiMasterTransmit(CHAR_SPACE);
         displayChar(value);
         pressedButton = getPressedButton();
@@ -593,12 +593,20 @@ void configBeeps(uint8_t minValue, uint8_t maxValue, uint8_t count, uint8_t *pla
                 value++;
                 if (value > maxValue) {
                     value = minValue;
+                } else {
+                    if ((value & 0x0F) > 0x09) {
+                        value = (value & 0xF0) + 0x10;
+                    }
                 }
                 break;
             case PRESSED_DOWN:
                 value--;
                 if (value < minValue) {
                     value = maxValue;
+                } else {
+                    if ((value & 0x0F) > 0x09) {
+                        value = (value & 0xF0) + 0x09;
+                    }
                 }
                 break;
             case PRESSED_CANCEL:
@@ -619,7 +627,7 @@ void configBeeps(uint8_t minValue, uint8_t maxValue, uint8_t count, uint8_t *pla
                 break;
         }
     }
-    if (changed == TRUE ) {
+    if (hasChange == TRUE ) {
         saveSettings();
     }
     readSettings();
@@ -629,6 +637,7 @@ void configureDevice(void)
 {
     uint8_t pressedButton, configStatus = CONFIG_START, minValue = 0x01, maxValue = 0x03, value;
     deviceSetting.status = oldStatus;
+    showTime = FALSE;
     while (configStatus != CONFIG_EXIT)
     {
         clearDisplay();
@@ -725,10 +734,10 @@ void configureDevice(void)
                         }
                         break;
                     case CONFIG_LONG_BEEPS: //0x23
-                        configBeeps(0, 59, deviceSetting.longCount, (uint8_t *) &deviceSetting.long1);
+                        configBeeps(0, 0x59, deviceSetting.longCount, (uint8_t *) &deviceSetting.long1);
                         break;
-                    case CONFIG_LONG_BEEPS: //0x24
-                        configBeeps(0, 59, deviceSetting.shortCount, (uint8_t *) &deviceSetting.short1);
+                    case CONFIG_SHORT_BEEPS: //0x24
+                        configBeeps(0, 0x59, deviceSetting.shortCount, (uint8_t *) &deviceSetting.short1);
                         break;
                     case CONFIG_RESET_FACTORY: //0x33
                         setFactorySetting();
@@ -843,7 +852,9 @@ int main(void)
         setFactorySetting();
     }
 
-    displayHello();
+    if (deviceSetting.status == STATUS_REAL_TIME) {
+        displayHello();
+    }
 
     // Repeat indefinitely
     for(;;)
