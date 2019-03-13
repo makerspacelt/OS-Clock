@@ -650,20 +650,13 @@ void configBeeps(uint8_t minValue, uint8_t maxValue, uint8_t count, uint8_t *pla
     readSettings();
 }
 
-void configTime(uint32_t timestamp)
+void configTime(int8_t cache[3][2])
 {
-    uint8_t configStatus = CONFIG_START, pressedButton, tmp, pause = 15, value;
-    int8_t place = 2, cache[3][2] = {{0, 0x24}, {0, 0x59}, {0, 0x59}};
-    uint32_t result;
-    showTime = TRUE;
-    tmp = timestamp / 3600;
-    cache[0][0] = ((tmp / 10) << 4) + (tmp % 10);
-    tmp = (timestamp % 3600) / 60;
-    cache[1][0] = ((tmp / 10) << 4) + (tmp % 10);
-    tmp = timestamp % 60;
-    cache[2][0] = ((tmp / 10) << 4) + (tmp % 10);
+    uint8_t configStatus = CONFIG_START, pressedButton, pause = 15, value;
+    int8_t place = 2;
 
-    value = cache[0][0];
+    showTime = TRUE;
+    value = cache[2][0];
     while (configStatus != CONFIG_EXIT) {
         _delay_ms(30);
         clearDisplay();
@@ -714,28 +707,49 @@ void configTime(uint32_t timestamp)
                 pause = 15;
                 break;
             case PRESSED_CANCEL:
-                configStatus = CONFIG_EXIT;
+                place++;
+                value = cache[place][0];
+                pause = 15;
+                if (place > 2) {
+                    configStatus = CONFIG_EXIT;
+                }
                 break;
             case PRESSED_ENTER:
                 place--;
+                value = cache[place][0];
+                pause = 15;
                 if (place < 0) {
-                    result = ((uint32_t)((cache[0][0] >> 4) * 10 + (cache[0][0] & 0x0F))) * 3600 +
-                             ((uint32_t)((cache[1][0] >> 4) * 10 + (cache[1][0] & 0x0F))) * 60 +
-                             ((uint32_t)((cache[2][0] >> 4) * 10 + (cache[2][0] & 0x0F)));
-                    if (result != timestamp) {
-                        deviceSetting.deltaTime = result;
-                        saveSettings();
-                    }
-                    readSettings();
                     configStatus = CONFIG_EXIT;
-                } else {
-                    value = cache[place][0];
-                    pause = 15;
                 }
                 break;
         }
     }
     showTime = FALSE;
+}
+
+void configDeltaTime(void)
+{
+    uint8_t tmp;
+    int8_t cache[3][2] = {{0, 0x23}, {0, 0x59}, {0, 0x59}};
+    uint32_t result;
+
+    tmp = deviceSetting.deltaTime / 3600;
+    cache[0][0] = ((tmp / 10) << 4) + (tmp % 10);
+    tmp = (deviceSetting.deltaTime % 3600) / 60;
+    cache[1][0] = ((tmp / 10) << 4) + (tmp % 10);
+    tmp = deviceSetting.deltaTime % 60;
+    cache[2][0] = ((tmp / 10) << 4) + (tmp % 10);
+
+    configTime(cache);
+
+    result = ((uint32_t)((cache[0][0] >> 4) * 10 + (cache[0][0] & 0x0F))) * 3600 +
+             ((uint32_t)((cache[1][0] >> 4) * 10 + (cache[1][0] & 0x0F))) * 60 +
+             ((uint32_t)((cache[2][0] >> 4) * 10 + (cache[2][0] & 0x0F)));
+    if (result != deviceSetting.deltaTime) {
+        deviceSetting.deltaTime = result;
+        saveSettings();
+    }
+    readSettings();
 }
 
 void configureDevice(void)
@@ -845,7 +859,7 @@ void configureDevice(void)
                         configBeeps(0, 0x59, deviceSetting.shortCount, (uint8_t *) &deviceSetting.short1);
                         break;
                     case CONFIG_DELTA_TIME: //0x31
-                        configTime(deviceSetting.deltaTime);
+                        configDeltaTime();
                         break;
                     case CONFIG_RESET_FACTORY: //0x33
                         setFactorySetting();
