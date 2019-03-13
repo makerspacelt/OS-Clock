@@ -79,6 +79,7 @@
 #define CONFIG_SHORT_BEEPS       0x24
 #define CONFIG_TIME              0x03
 #define CONFIG_DELTA_TIME        0x31
+#define CONFIG_REAL_TIME         0x32
 #define CONFIG_RESET_FACTORY     0x33
 
 volatile uint8_t oldStatus, lastSecond = 0xFF, isMinus = FALSE, showTime = FALSE;
@@ -281,6 +282,16 @@ uint8_t readTime(void)
     time.hours = tmp[2] & 0x3F;
 
     return TRUE;
+}
+
+void writeTime(void)
+{
+    uint8_t tmp[4];
+    tmp[0] = 0x00;
+    tmp[1] = time.seconds;
+    tmp[2] = time.minutes;
+    tmp[3] = time.hours | 0x40;
+    twiWrite(tmp, 4);
 }
 
 void readSettings(void)
@@ -752,6 +763,27 @@ void configDeltaTime(void)
     readSettings();
 }
 
+void configRealTime(void)
+{
+    int8_t cache[3][2] = {{0, 0x23}, {0, 0x59}, {0, 0x59}};
+    while (!readTime()) {
+        _delay_ms(30);
+    }
+    cache[0][0] = time.hours;
+    cache[1][0] = time.minutes;
+    cache[2][0] = time.seconds;
+    configTime(cache);
+
+    if (cache[0][0] != time.hours ||
+        cache[1][0] != time.minutes ||
+        cache[2][0] != time.seconds) {
+        time.hours = cache[0][0];
+        time.minutes = cache[1][0];
+        time.seconds = cache[2][0];
+        writeTime();
+    }
+}
+
 void configureDevice(void)
 {
     uint8_t pressedButton, configStatus = CONFIG_START, minValue = 0x01, maxValue = 0x03, value;
@@ -860,6 +892,9 @@ void configureDevice(void)
                         break;
                     case CONFIG_DELTA_TIME: //0x31
                         configDeltaTime();
+                        break;
+                    case CONFIG_REAL_TIME: //0x32
+                        configRealTime();
                         break;
                     case CONFIG_RESET_FACTORY: //0x33
                         setFactorySetting();
