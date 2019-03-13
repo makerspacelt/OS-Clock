@@ -78,6 +78,7 @@
 #define CONFIG_LONG_BEEPS        0x23
 #define CONFIG_SHORT_BEEPS       0x24
 #define CONFIG_TIME              0x03
+#define CONFIG_DELTA_TIME        0x31
 #define CONFIG_RESET_FACTORY     0x33
 
 volatile uint8_t oldStatus, lastSecond = 0xFF, isMinus = FALSE, showTime = FALSE;
@@ -487,13 +488,17 @@ void displayChar(uint8_t data)
     renewDisplay();
 }
 
-//void displayFullChar(uint8_t data)
-//{
-//    spiMasterTransmit(data >> 4);
-//    spiMasterTransmit(data & 0x0F);
-//    renewDisplay();
-//}
-//
+void sendFullChar(uint8_t data)
+{
+    if (data == CHAR_SPACE) {
+        spiMasterTransmit(CHAR_SPACE);
+        spiMasterTransmit(CHAR_SPACE);
+    } else {
+        spiMasterTransmit(data >> 4);
+        spiMasterTransmit(data & 0x0F);
+    }
+}
+
 //void displayData(uint8_t *data, uint8_t count)
 //{
 //    uint8_t tmp;
@@ -513,6 +518,18 @@ uint8_t getPressedButton(void)
     _delay_ms(30);
     pressedButton = (0x3C & ~PIND);
     while((PIND & 0x3C) != 0x3C) {;}
+
+    return pressedButton;
+}
+
+uint8_t getNonBlockingPressedButton(void)
+{
+    uint8_t pressedButton = 0;
+    if((PIND & 0x3C) != 0x3C) {
+        _delay_ms(30);
+        pressedButton = (0x3C & ~PIND);
+        while((PIND & 0x3C) != 0x3C) {;}
+    }
 
     return pressedButton;
 }
@@ -633,6 +650,94 @@ void configBeeps(uint8_t minValue, uint8_t maxValue, uint8_t count, uint8_t *pla
     readSettings();
 }
 
+void configTime(uint32_t timestamp)
+{
+    uint8_t configStatus = CONFIG_START, pressedButton, tmp, pause = 15, value;
+    int8_t place = 2, cache[3][2] = {{0, 0x24}, {0, 0x59}, {0, 0x59}};
+    uint32_t result;
+    showTime = TRUE;
+    tmp = timestamp / 3600;
+    cache[0][0] = ((tmp / 10) << 4) + (tmp % 10);
+    tmp = (timestamp % 3600) / 60;
+    cache[1][0] = ((tmp / 10) << 4) + (tmp % 10);
+    tmp = timestamp % 60;
+    cache[2][0] = ((tmp / 10) << 4) + (tmp % 10);
+
+    value = cache[0][0];
+    while (configStatus != CONFIG_EXIT) {
+        _delay_ms(30);
+        clearDisplay();
+        for(uint8_t i = 0; i < 3; i++){
+            if (i == place) {
+                sendFullChar(value);
+                if (pause == 0) {
+                    pause = 15;
+                    if (value == CHAR_SPACE) {
+                        value = cache[i][0];
+                    } else {
+                        value = CHAR_SPACE;
+                    }
+                }
+            } else {
+                sendFullChar(cache[i][0]);
+            }
+
+        }
+        renewDisplay();
+        pause--;
+
+        pressedButton = getNonBlockingPressedButton();
+        switch (pressedButton)
+        {
+            case PRESSED_UP:
+                cache[place][0]++;
+                if (cache[place][0] > cache[place][1]) {
+                    cache[place][0] = 0;
+                } else {
+                    if ((cache[place][0] & 0x0F) > 0x09) {
+                        cache[place][0] = (cache[place][0] & 0xF0) + 0x10;
+                    }
+                }
+                value = cache[place][0];
+                pause = 15;
+                break;
+            case PRESSED_DOWN:
+                cache[place][0]--;
+                if (cache[place][0] < 0) {
+                    cache[place][0] = cache[place][1];
+                } else {
+                    if ((cache[place][0] & 0x0F) > 0x09) {
+                        cache[place][0] = (cache[place][0] & 0xF0) + 0x09;
+                    }
+                }
+                value = cache[place][0];
+                pause = 15;
+                break;
+            case PRESSED_CANCEL:
+                configStatus = CONFIG_EXIT;
+                break;
+            case PRESSED_ENTER:
+                place--;
+                if (place < 0) {
+                    result = ((uint32_t)((cache[0][0] >> 4) * 10 + (cache[0][0] & 0x0F))) * 3600 +
+                             ((uint32_t)((cache[1][0] >> 4) * 10 + (cache[1][0] & 0x0F))) * 60 +
+                             ((uint32_t)((cache[2][0] >> 4) * 10 + (cache[2][0] & 0x0F)));
+                    if (result != timestamp) {
+                        deviceSetting.deltaTime = result;
+                        saveSettings();
+                    }
+                    readSettings();
+                    configStatus = CONFIG_EXIT;
+                } else {
+                    value = cache[place][0];
+                    pause = 15;
+                }
+                break;
+        }
+    }
+    showTime = FALSE;
+}
+
 void configureDevice(void)
 {
     uint8_t pressedButton, configStatus = CONFIG_START, minValue = 0x01, maxValue = 0x03, value;
@@ -668,11 +773,11 @@ void configureDevice(void)
                         maxValue = (configStatus << 4) | 0x05;
                         configStatus = minValue;
                         break;
-//                    case CONFIG_TIME: //0x03
-//                        minValue = (CONFIG_TIME << 4) | 0x01;
-//                        maxValue = (CONFIG_TIME << 4) | 0x03;
-//                        configStatus = minValue;
-//                        break;
+                    case CONFIG_TIME: //0x03
+                        minValue = (CONFIG_TIME << 4) | 0x01;
+                        maxValue = (CONFIG_TIME << 4) | 0x04;
+                        configStatus = minValue;
+                        break;
                     case CONFIG_START_REAL_TIME: //0x11
                         deviceSetting.status = STATUS_REAL_TIME_START;
                         deviceSetting.zeroTime = 0;
@@ -738,6 +843,9 @@ void configureDevice(void)
                         break;
                     case CONFIG_SHORT_BEEPS: //0x24
                         configBeeps(0, 0x59, deviceSetting.shortCount, (uint8_t *) &deviceSetting.short1);
+                        break;
+                    case CONFIG_DELTA_TIME: //0x31
+                        configTime(deviceSetting.deltaTime);
                         break;
                     case CONFIG_RESET_FACTORY: //0x33
                         setFactorySetting();
