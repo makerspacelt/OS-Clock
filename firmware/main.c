@@ -80,7 +80,8 @@
 #define CONFIG_TIME              0x03
 #define CONFIG_DELTA_TIME        0x31
 #define CONFIG_REAL_TIME         0x32
-#define CONFIG_RESET_FACTORY     0x33
+#define CONFIG_BATTERY_LEVEL     0x33
+#define CONFIG_RESET_FACTORY     0x34
 
 volatile uint8_t oldStatus, lastSecond = 0xFF, isMinus = FALSE, showTime = FALSE;
 
@@ -155,6 +156,11 @@ void init(void)
 
     // Enable Serial Peripheral Interface (SPI)
     spiMasterInit();
+
+    //Configure ADC
+    DDRC &= ~(1<<PC0);
+    ADMUX = (0<<REFS1)|(1<<REFS0)|(0<<ADLAR)|(0<<MUX3)|(0<<MUX2)|(0<<MUX1)|(0<<MUX0); //ADC0 is connected to battery
+    ADCSRA = (1<<ADEN)|(0<<ADFR)|(0<<ADIF)|(0<<ADIE)|(1<<ADPS2)|(1<<ADPS1)|(0<<ADPS0); //Accuracy is best between 50 and 200 Khz clock frequency.
 
     // Enable external button interrupt
     GICR |= (1<<INT1);
@@ -784,6 +790,26 @@ void configRealTime(void)
     }
 }
 
+void showBatteryLevel(void)
+{
+    uint8_t low, high;
+    while (TRUE) {
+        if (0 != getNonBlockingPressedButton()) {
+            return;
+        }
+        ADCSRA &= ~(1<<ADIF);
+        ADCSRA |= (1 << ADSC);
+        while ((ADCSRA & 0x10) != 0x10) { ; }
+        low = ADCL;
+        high = ADCH;
+        clearDisplay();
+        sendFullChar(high);
+        sendFullChar(low);
+        renewDisplay();
+        _delay_ms(50);
+    }
+}
+
 void configureDevice(void)
 {
     uint8_t pressedButton, configStatus = CONFIG_START, minValue = 0x01, maxValue = 0x03, value;
@@ -896,7 +922,10 @@ void configureDevice(void)
                     case CONFIG_REAL_TIME: //0x32
                         configRealTime();
                         break;
-                    case CONFIG_RESET_FACTORY: //0x33
+                    case CONFIG_BATTERY_LEVEL: //0x33
+                        showBatteryLevel();
+                        break;
+                    case CONFIG_RESET_FACTORY: //0x34
                         setFactorySetting();
                         saveSettings();
                         configStatus = CONFIG_EXIT;
