@@ -1,0 +1,63 @@
+Laikrodyje yra keturi mygtukai:
+ - Į kairę (Enter) - patvirtinimo mygtukas;
+ - Į dešinę (Cancel) - atšaukimo mygtukas;
+ - Į viršų (plius) - didina reikšmes;
+ - Į apačią (minus) - mažina reikšmes;
+
+1. Startas
+    11. Startas realiu laiku;
+    12. Startas nuo 00:00:00;
+    13. Startas nuo +x:xx:xx;
+    14. Startas nuo –x:xx:xx;
+    15. Rodyti realų laiką;
+
+2. Garso nustatymai
+    21. Ilgų pipsėjimų skaičius;
+    22. Trumpų pipsėjimų skaičius;
+    23. Ilgų pipsėjimų sekundžių nustatymas;
+    24. Trumpų pipsėjimų sekundžių nustatymas;
+
+3. Kiti nustatymai
+    31. Starto poslinkio nustatymas x:xx:xx;
+    32. Laiko nustatymas;
+    33. Rodyti likusios energijos kiekį akumuliatoriuje procentais;
+    34. Atstatyti gamyklinius nustatymus;
+
+Įjungus laikrodį jis rodo visada paskutinį pasirinktą programą iš meniu punkto 1.
+Paspaudus mygtuką Enter bet kuriuo metu yra patenkama į nustatymų meniu. Pirmiausia pateksite į pirmo lygio menių,
+kur galėsite rinktis iš: 1 Startas, 2 Garso nustatymai, 3 Kiti nustatymai. Pirmiausia ekrane pamatysite šviečiantį 1,
+jei paspausite į viršų tada pasikeis į 2, jei padarysite dar kartą tada parodys 3.
+Kai pasirenkamas norimas meniu spaudžiame Enter ir tada patenkame į antro lygio meniu. Jei norime grįžti atgal, tai
+pavyks padaryti paspaudus Cancel.
+Ekrane matote 11 ir jei paspausite Enter, laikrodis iškarto peršoks į darbinį rėžimą ir pradės rodyti laiką.
+Lygiai taip pat nutiks su bet kuriuo kitu meniu nuo 11 iki 15.
+
+Meniu punkte 2 'Garso nustatymai', nustatymų pakeitimai vyksta taip:
+    - Pasirenkamas norimas meniu ir tada spaudžiame Enter. Ekrane pasirodo informaciją su mytukais 'į viršų' ir
+    'į apačią' pasirenkame norimą reikšmę ir tada spaudžiame Enter Kad būtų išsaugoti pakeitimai.
+21 - meniu punktas skirtas nustatyti kiek ilgų pipsėjimų norime turėtį per minutę, galimi pasirinkimai 0,1,2,3,4.
+22 -  meniu punktas skirtas nustatyti kiek trumpų pipsėjimų norime turėtį per minutę, galimi pasirinkimai 0,1,2,3,4,5,6,7,8.
+23 - meniu punktas skirtas nustatyti kurias sekundes bus ilgi pipsėjimai. Jei menių punkte pasirinkote 2,
+tai tada reikės nustatyti dvi skirtingas sekundes kurių metu bus ilgas garsinis signalas. Patvirtinius pirmojo pasirinkimo
+reikšmę, bus iškarto siūloma pasirinkti ir antrojo karto sekundę. Tik paspaudus Enter po visų pasirinkimų bus išsaugoti
+pakeitimai.
+24 - veikia analogiškai kaip ir 23 punktas, tik reikės tiek kartų pasirinkti sekundes koks buvo išsaugotas nustatymas
+punkte 22.
+
+Meniu punkte 3 'Kiti nustatymai' visas valdymas yra toks pat kaip ir prieš tai aprašytuose meniu.
+31 - galima nustatyti laiką valandomis, monutėmis ir sekundėmis koks bus naudojamas laiko poslinkis jei laikrodis
+bus paleidžiamas 13 ar 14 darbiniu rėžimu.
+32 - laikrodžio laiko nustatymas.
+33 - šiuo metu rodo skaičių šešioliktainiu formatu tai ką nuskaito mikrokontroleris, galimos reikšmės nuo 1 iki 3FF.
+34 - atstato 21, 22, 23, 24 ir 31 reikšmes į šias:
+
+    Laikrodžio darbinis rėžimas 'Rodytį realų laiką';
+    Ilgų pipsėjimų skaičius: 1;
+        Taip pat yra išsaugomos keturios ilgo pipsėjimo sekundės 0, 15, 30, 45, bet naudojama viena,
+        nes tai nurodo reikšmė esanti viena eilute akščiau.
+    Trumpų pipsėjimų skaičius: 2;
+        Taip pat yra išsaugomos aštuonios trumpo pipsėjimo sekundės 58, 59, 13, 14, 28, 29, 43, 44, bet naudojamos dvi,
+        nes tai nurodo reikšmė esanti viena eilute akščiau.
+    Laiko poslinkis yra nustatomas į penkiolika minučių (00:15:00)
+
+Per paskutinį testavimą laikrodis skuba per 24h 4 sekundes (2019-03-14);
