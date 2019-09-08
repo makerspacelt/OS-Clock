@@ -87,7 +87,9 @@ volatile uint8_t oldStatus,
     lastSecond = 0xFF,
     isMinus = FALSE,
     showTime = FALSE,
+    debug = FALSE,
     lastTime = 0;
+volatile uint32_t rpm = 0;
 
 typedef struct {
     uint8_t seconds;
@@ -205,17 +207,22 @@ void sendBuffer(uint8_t *idata, uint8_t kiek)
         while(!(UCSRA&(1<<UDRE)));
         UDR=*idata++;
     }
+    while(!(UCSRA&(1<<UDRE)));
+    UDR=13;
+    while(!(UCSRA&(1<<UDRE)));
+    UDR=10;
 }
 
 void USART_vInit(void)
 {
-    // Set baud rate
+    // Set baud rate 38400
     UBRRH = (uint8_t)(12>>8);
     UBRRL = (uint8_t)12;
     // Set frame format to 8 data bits, no parity, 1 stop bit
     // Enable receiver and transmitter
     UCSRB = (1<<RXEN)|(1<<TXEN)|(1<<RXCIE);
     UCSRC = (1<<URSEL)|(1<<USBS)|(3<<UCSZ0);
+    asm volatile ("nop");
 }
 
 
@@ -906,6 +913,7 @@ void configureDevice(void)
                             configStatus = CONFIG_EXIT;
                             sendBuffer((uint8_t *) &mark, 1);
                             sendBuffer((uint8_t *) &deviceSetting.zeroTime, 4);
+                            debug = TRUE;
                         }
                         break;
                     case CONFIG_START_PLUS_TIME: //0x13
@@ -1015,11 +1023,12 @@ void makeBeep(void){
 
 void calculateTime(void)
 {
-    uint32_t realTime, batteryLevel, i = 0;
+    uint32_t realTime, batteryLevel;
     uint8_t temp;
     char mark = 'r', mark2 = 'd', mark3 = 'b', mark4 = 'p'; //r - real time; d - diff; b - battery level; p - rpm;
+    rpm++;
     realTime = getTimeStamp();
-    if (lastTime != (uint8_t)realTime ) {
+    if (debug == TRUE && lastTime != lastSecond) { //(lastSecond & 0x0F) == 0x00 &&
         sendBuffer((uint8_t *) &mark, 1);
         sendBuffer((uint8_t *) &realTime, 4);
     }
@@ -1042,16 +1051,16 @@ void calculateTime(void)
     time.minutes = (temp / 10 << 4) | (temp % 10);
     temp = realTime / 3600;
     time.hours = (temp / 10 << 4) | (temp % 10);
-    if (lastTime != (uint8_t)realTime ) {
+    if (debug == TRUE && lastTime != lastSecond) {
         sendBuffer((uint8_t *) &mark2, 1);
         sendBuffer((uint8_t *) &time, 3);
         batteryLevel = getBatteryLevel();
         sendBuffer((uint8_t *) &mark3, 1);
         sendBuffer((uint8_t *) &batteryLevel, 4);
-        i++;
         sendBuffer((uint8_t *) &mark4, 1);
-        sendBuffer((uint8_t *) &i, 4);
-        lastTime = (uint8_t)realTime;
+        sendBuffer((uint8_t *) &rpm, 4);
+        rpm = 0;
+        lastTime = lastSecond;
     }
 }
 
