@@ -83,7 +83,11 @@
 #define CONFIG_BATTERY_LEVEL     0x33
 #define CONFIG_RESET_FACTORY     0x34
 
-volatile uint8_t oldStatus, lastSecond = 0xFF, isMinus = FALSE, showTime = FALSE;
+volatile uint8_t oldStatus,
+    lastSecond = 0xFF,
+    isMinus = FALSE,
+    showTime = FALSE,
+    lastTime = 0;
 
 typedef struct {
     uint8_t seconds;
@@ -194,6 +198,26 @@ void setFactorySetting(void)
     deviceSetting.zeroTime = 0;
     deviceSetting.deltaTime = 900;
 }
+
+void sendBuffer(uint8_t *idata, uint8_t kiek)
+{
+    for (uint8_t i = 1;i <= kiek;i++){
+        while(!(UCSRA&(1<<UDRE)));
+        UDR=*idata++;
+    }
+}
+
+void USART_vInit(void)
+{
+    // Set baud rate
+    UBRRH = (uint8_t)(12>>8);
+    UBRRL = (uint8_t)12;
+    // Set frame format to 8 data bits, no parity, 1 stop bit
+    // Enable receiver and transmitter
+    UCSRB = (1<<RXEN)|(1<<TXEN)|(1<<RXCIE);
+    UCSRC = (1<<URSEL)|(1<<USBS)|(3<<UCSZ0);
+}
+
 
 uint8_t prepareTwi(uint8_t mode)
 {
@@ -790,6 +814,23 @@ void configRealTime(void)
     }
 }
 
+uint32_t getBatteryLevel(void)
+{
+    uint8_t low, high;
+    uint32_t res = 0;
+    ADCSRA &= ~(1<<ADIF);
+    ADCSRA |= (1 << ADSC);
+    while ((ADCSRA & 0x10) != 0x10) { ; }
+    low = ADCL;
+    high = ADCH;
+
+    res = high;
+    res = res << 8;
+    res += low;
+
+    return res;
+}
+
 void showBatteryLevel(void)
 {
     uint8_t low, high;
@@ -813,6 +854,7 @@ void showBatteryLevel(void)
 void configureDevice(void)
 {
     uint8_t pressedButton, configStatus = CONFIG_START, minValue = 0x01, maxValue = 0x03, value;
+    char mark = 'z';
     deviceSetting.status = oldStatus;
     showTime = FALSE;
     while (configStatus != CONFIG_EXIT)
@@ -862,6 +904,8 @@ void configureDevice(void)
                             deviceSetting.zeroTime = getTimeStamp();
                             saveSettings();
                             configStatus = CONFIG_EXIT;
+                            sendBuffer((uint8_t *) &mark, 1);
+                            sendBuffer((uint8_t *) &deviceSetting.zeroTime, 4);
                         }
                         break;
                     case CONFIG_START_PLUS_TIME: //0x13
@@ -971,9 +1015,14 @@ void makeBeep(void){
 
 void calculateTime(void)
 {
-    uint32_t realTime;
+    uint32_t realTime, batteryLevel, i = 0;
     uint8_t temp;
+    char mark = 'r', mark2 = 'd', mark3 = 'b', mark4 = 'p'; //r - real time; d - diff; b - battery level; p - rpm;
     realTime = getTimeStamp();
+    if (lastTime != (uint8_t)realTime ) {
+        sendBuffer((uint8_t *) &mark, 1);
+        sendBuffer((uint8_t *) &realTime, 4);
+    }
     isMinus = FALSE;
     if (deviceSetting.status == STATUS_MINUS_TIME_START && realTime >= deviceSetting.zeroTime) {
         deviceSetting.status = STATUS_ZERO_TIME_START;
@@ -993,6 +1042,17 @@ void calculateTime(void)
     time.minutes = (temp / 10 << 4) | (temp % 10);
     temp = realTime / 3600;
     time.hours = (temp / 10 << 4) | (temp % 10);
+    if (lastTime != (uint8_t)realTime ) {
+        sendBuffer((uint8_t *) &mark2, 1);
+        sendBuffer((uint8_t *) &time, 3);
+        batteryLevel = getBatteryLevel();
+        sendBuffer((uint8_t *) &mark3, 1);
+        sendBuffer((uint8_t *) &batteryLevel, 4);
+        i++;
+        sendBuffer((uint8_t *) &mark4, 1);
+        sendBuffer((uint8_t *) &i, 4);
+        lastTime = (uint8_t)realTime;
+    }
 }
 
 ISR(INT1_vect)
@@ -1029,6 +1089,7 @@ int main(void)
 {
     init();
     clearDisplay();
+    USART_vInit();
 
     // Read settings from memory
     readSettings();
@@ -1038,9 +1099,9 @@ int main(void)
         setFactorySetting();
     }
 
-    if (deviceSetting.status == STATUS_REAL_TIME) {
-        displayHello();
-    }
+//    if (deviceSetting.status == STATUS_REAL_TIME) {
+//        displayHello();
+//    }
 
     // Repeat indefinitely
     for(;;)
