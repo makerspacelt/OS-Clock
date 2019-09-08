@@ -327,7 +327,7 @@ void writeTime(void)
     tmp[0] = 0x00;
     tmp[1] = time.seconds;
     tmp[2] = time.minutes;
-    tmp[3] = time.hours | 0x40;
+    tmp[3] = time.hours;
     twiWrite(tmp, 4);
 }
 
