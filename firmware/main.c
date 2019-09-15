@@ -840,20 +840,31 @@ uint32_t getBatteryLevel(void)
 
 void showBatteryLevel(void)
 {
-    uint8_t low, high;
+    uint8_t low, high, freq = 0;
+    uint32_t res = 0;
     while (TRUE) {
         if (0 != getNonBlockingPressedButton()) {
             return;
         }
-        ADCSRA &= ~(1<<ADIF);
-        ADCSRA |= (1 << ADSC);
-        while ((ADCSRA & 0x10) != 0x10) { ; }
-        low = ADCL;
-        high = ADCH;
-        clearDisplay();
-        sendFullChar(high);
-        sendFullChar(low);
-        renewDisplay();
+        if (freq % 1000 == 0) {
+            ADCSRA &= ~(1<<ADIF);
+            ADCSRA |= (1 << ADSC);
+            while ((ADCSRA & 0x10) != 0x10) { ; }
+            low = ADCL;
+            high = ADCH;
+            res = high;
+            res = res << 8;
+            res += low;
+
+            res = ((63 * res) / 100) - 424;
+            clearDisplay();
+            displayChar(res / 1000);
+            displayChar(res / 100 % 10);
+            displayChar(res / 10 % 10);
+            displayChar(res % 10);
+            renewDisplay();
+        }
+        freq++;
         _delay_ms(50);
     }
 }
