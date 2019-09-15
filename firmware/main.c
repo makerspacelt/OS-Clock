@@ -1119,9 +1119,9 @@ int main(void)
         setFactorySetting();
     }
 
-//    if (deviceSetting.status == STATUS_REAL_TIME) {
-//        displayHello();
-//    }
+    if (deviceSetting.status == STATUS_REAL_TIME) {
+        displayHello();
+    }
 
     // Repeat indefinitely
     for(;;)
