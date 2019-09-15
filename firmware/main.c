@@ -1028,7 +1028,7 @@ void calculateTime(void)
     char mark = 'r', mark2 = 'd', mark3 = 'b', mark4 = 'p'; //r - real time; d - diff; b - battery level; p - rpm;
     rpm++;
     realTime = getTimeStamp();
-    if (debug == TRUE && lastTime != lastSecond) { //(lastSecond & 0x0F) == 0x00 &&
+    if (debug == TRUE && (lastSecond & 0x0F) == 0x00 && lastTime != lastSecond) { //
         sendBuffer((uint8_t *) &mark, 1);
         sendBuffer((uint8_t *) &realTime, 4);
     }
@@ -1051,7 +1051,7 @@ void calculateTime(void)
     time.minutes = (temp / 10 << 4) | (temp % 10);
     temp = realTime / 3600;
     time.hours = (temp / 10 << 4) | (temp % 10);
-    if (debug == TRUE && lastTime != lastSecond) {
+    if (debug == TRUE && (lastSecond & 0x0F) == 0x00 && lastTime != lastSecond) {
         sendBuffer((uint8_t *) &mark2, 1);
         sendBuffer((uint8_t *) &time, 3);
         batteryLevel = getBatteryLevel();
