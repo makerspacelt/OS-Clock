@@ -22,7 +22,7 @@
 #define CHAR_MINUS 0xFE
 #define CHAR_SPACE 0xFF
 #define CHAR_A 0x7D
-#define CHAR_B 0X4F
+#define CHAR_B 0x4F
 #define CHAR_C 0x53
 #define CHAR_D 0x2F
 #define CHAR_E 0x5B
@@ -86,10 +86,7 @@
 volatile uint8_t oldStatus,
     lastSecond = 0xFF,
     isMinus = FALSE,
-    showTime = FALSE,
-    debug = FALSE,
-    lastTime = 0;
-volatile uint32_t rpm = 0;
+    showTime = FALSE;
 
 typedef struct {
     uint8_t seconds;
@@ -136,12 +133,12 @@ typedef struct {
 volatile ds1307Reg_t time;
 volatile setting_t deviceSetting;
 
-void spiMasterInit(void)
+void initSpiMaster(void)
 {
     /** The Serial Peripheral Interface (SPI) allows high-speed synchronous data transfer between the
     ATmega8 and peripheral devices or between several AVR devices. */
-    /* Enable SPI, Master, set clock rate fck/16 */
-    SPCR = (1<<SPE)|(1<<MSTR)|(1<<SPR0);
+    /* Enable SPI, Master, set clock rate fck/128 */
+    SPCR = (1<<SPE)|(1<<MSTR)|(1<<SPR0)|(1<<SPR1);
 }
 
 void init(void)
@@ -158,23 +155,35 @@ void init(void)
     DDRD &= ~((1<<PD2)|(1<<PD3)|(1<<PD4)|(1<<PD5));
     PORTD |= (1<<PD2)|(1<<PD3)|(1<<PD4)|(1<<PD5);
     // enable pull up resistors
-    SFIOR &= ~(1<<PUD);
+    MCUCR &= ~(1<<PUD);
+}
 
-    // Enable Serial Peripheral Interface (SPI)
-    spiMasterInit();
-
+void initFeatures(void)
+{
     //Configure ADC
     DDRC &= ~(1<<PC0);
     ADMUX = (0<<REFS1)|(1<<REFS0)|(0<<ADLAR)|(0<<MUX3)|(0<<MUX2)|(0<<MUX1)|(0<<MUX0); //ADC0 is connected to battery
-    ADCSRA = (1<<ADEN)|(0<<ADFR)|(0<<ADIF)|(0<<ADIE)|(1<<ADPS2)|(1<<ADPS1)|(0<<ADPS0); //Accuracy is best between 50 and 200 Khz clock frequency.
+    ADCSRA = (1<<ADEN)|(0<<ADATE)|(0<<ADIF)|(0<<ADIE)|(1<<ADPS2)|(1<<ADPS1)|(0<<ADPS0); //Accuracy is best between 50 and 200 Khz clock frequency.
 
     // Enable external button interrupt
-    GICR |= (1<<INT1);
-    MCUCR &= ~((1<<ISC11)|(1<<ISC10));
+    EIMSK |= (1<<INT1);
+    EICRA &= ~((1<<ISC11)|(1<<ISC10));
     sei();
     asm volatile ("nop");
 
-    // Relax after exhausting work
+    //Configure TWI speed
+    TWBR = (uint8_t)85;
+}
+
+void initUSART(void)
+{
+    // Set baud rate 38400
+    UBRR0H = (uint8_t)(29>>8);
+    UBRR0L = (uint8_t)29;
+    // Enable receiver and transmitter and Interup on RXC
+    UCSR0B = (1<<RXEN0)|(1<<TXEN0)|(1<<RXCIE0);
+    // Set frame format: 8data, 2stop bit
+    UCSR0C = (1<<USBS0)|(3<<UCSZ00);
     asm volatile ("nop");
 }
 
@@ -204,25 +213,23 @@ void setFactorySetting(void)
 void sendBuffer(uint8_t *idata, uint8_t kiek)
 {
     for (uint8_t i = 1;i <= kiek;i++){
-        while(!(UCSRA&(1<<UDRE)));
-        UDR=*idata++;
+        while(!(UCSR0A&(1<<UDRE0)));
+        UDR0=*idata++;
     }
-    while(!(UCSRA&(1<<UDRE)));
-    UDR=13;
-    while(!(UCSRA&(1<<UDRE)));
-    UDR=10;
+    while(!(UCSR0A&(1<<UDRE0)));
+    UDR0=13;
+    while(!(UCSR0A&(1<<UDRE0)));
+    UDR0=10;
 }
 
-void USART_vInit(void)
+void sendLetter(uint8_t data)
 {
-    // Set baud rate 38400
-    UBRRH = (uint8_t)(12>>8);
-    UBRRL = (uint8_t)12;
-    // Set frame format to 8 data bits, no parity, 1 stop bit
-    // Enable receiver and transmitter
-    UCSRB = (1<<RXEN)|(1<<TXEN)|(1<<RXCIE);
-    UCSRC = (1<<URSEL)|(1<<USBS)|(3<<UCSZ0);
-    asm volatile ("nop");
+    while(!(UCSR0A&(1<<UDRE0)));
+    UDR0 = data;
+    while(!(UCSR0A&(1<<UDRE0)));
+    UDR0=13;
+    while(!(UCSR0A&(1<<UDRE0)));
+    UDR0=10;
 }
 
 
@@ -234,7 +241,7 @@ uint8_t prepareTwi(uint8_t mode)
     // wait for start condition transmitted
     while (!(TWCR & (1<<TWINT)));
     // check status code
-    if (TW_STATUS != TW_START) {
+    if (TW_STATUS != TW_START && TW_STATUS != TW_REP_START) {
         // error
         return FALSE;
     };
@@ -261,7 +268,7 @@ void generateStop(void)
 
 uint8_t twiRead(uint8_t* data, uint8_t count)
 {
-    if (!prepareTwi(1)) {
+    if (!prepareTwi(TW_READ)) {
         return FALSE;
     }
     do {
@@ -284,7 +291,7 @@ uint8_t twiRead(uint8_t* data, uint8_t count)
 
 uint8_t twiWrite(uint8_t *data, uint8_t count)
 {
-    if (!prepareTwi(0)) {
+    if (!prepareTwi(TW_WRITE)) {
         return FALSE;
     }
     do {
@@ -298,6 +305,7 @@ uint8_t twiWrite(uint8_t *data, uint8_t count)
         }
     } while ( --count != 0 );
     generateStop( );
+
     return TRUE;
 }
 
@@ -472,6 +480,8 @@ void spiMasterTransmit(uint8_t cData)
         case 0x20:
             cData = 0x00;
             break;
+        default :
+            cData = 0x00;
     }
     if (showTime) {
         cData |= 0x80;
@@ -840,23 +850,20 @@ uint32_t getBatteryLevel(void)
 
 void showBatteryLevel(void)
 {
-    uint8_t low, high, freq = 0;
+    uint8_t freq = 0;
     uint32_t res = 0;
     while (TRUE) {
         if (0 != getNonBlockingPressedButton()) {
             return;
         }
         if (freq % 1000 == 0) {
-            ADCSRA &= ~(1<<ADIF);
-            ADCSRA |= (1 << ADSC);
-            while ((ADCSRA & 0x10) != 0x10) { ; }
-            low = ADCL;
-            high = ADCH;
-            res = high;
-            res = res << 8;
-            res += low;
-
-            res = ((63 * res) / 100) - 424;
+            res = getBatteryLevel();
+            res = ((75 * res) / 100) - 505;
+            if (res > 100) {
+                res = 100;
+            } else if (res < 0) {
+                res = 0;
+            }
             clearDisplay();
             displayChar(res / 1000);
             displayChar(res / 100 % 10);
@@ -924,7 +931,6 @@ void configureDevice(void)
                             configStatus = CONFIG_EXIT;
                             sendBuffer((uint8_t *) &mark, 1);
                             sendBuffer((uint8_t *) &deviceSetting.zeroTime, 4);
-                            debug = TRUE;
                         }
                         break;
                     case CONFIG_START_PLUS_TIME: //0x13
@@ -1034,15 +1040,9 @@ void makeBeep(void){
 
 void calculateTime(void)
 {
-    uint32_t realTime, batteryLevel;
+    uint32_t realTime;
     uint8_t temp;
-    char mark = 'r', mark2 = 'd', mark3 = 'b', mark4 = 'p'; //r - real time; d - diff; b - battery level; p - rpm;
-    rpm++;
     realTime = getTimeStamp();
-    if (debug == TRUE && (lastSecond & 0x0F) == 0x00 && lastTime != lastSecond) { //
-        sendBuffer((uint8_t *) &mark, 1);
-        sendBuffer((uint8_t *) &realTime, 4);
-    }
     isMinus = FALSE;
     if (deviceSetting.status == STATUS_MINUS_TIME_START && realTime >= deviceSetting.zeroTime) {
         deviceSetting.status = STATUS_ZERO_TIME_START;
@@ -1062,17 +1062,6 @@ void calculateTime(void)
     time.minutes = (temp / 10 << 4) | (temp % 10);
     temp = realTime / 3600;
     time.hours = (temp / 10 << 4) | (temp % 10);
-    if (debug == TRUE && (lastSecond & 0x0F) == 0x00 && lastTime != lastSecond) {
-        sendBuffer((uint8_t *) &mark2, 1);
-        sendBuffer((uint8_t *) &time, 3);
-        batteryLevel = getBatteryLevel();
-        sendBuffer((uint8_t *) &mark3, 1);
-        sendBuffer((uint8_t *) &batteryLevel, 4);
-        sendBuffer((uint8_t *) &mark4, 1);
-        sendBuffer((uint8_t *) &rpm, 4);
-        rpm = 0;
-        lastTime = lastSecond;
-    }
 }
 
 ISR(INT1_vect)
@@ -1086,7 +1075,7 @@ ISR(INT1_vect)
 
 void displayHello(void)
 {
-    char hello[] = { "LABAS" };
+    char hello[] = { "HELLO" };
     uint8_t i = 0;
 
     showTime = FALSE;
@@ -1108,8 +1097,13 @@ void displayHello(void)
 int main(void)
 {
     init();
+    initUSART();
+    initSpiMaster();
+    initFeatures();
+    // Relax after exhausting work
+    asm volatile ("nop");
+    asm volatile ("nop");
     clearDisplay();
-    USART_vInit();
 
     // Read settings from memory
     readSettings();

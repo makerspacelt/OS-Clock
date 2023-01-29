@@ -13,7 +13,7 @@
 
 
 # MCU name
-MCU = atmega8
+MCU = atmega168
 
 
 # Processor frequency.
@@ -34,7 +34,7 @@ MCU = atmega8
 #         F_CPU = 16000000
 #         F_CPU = 18432000
 #         F_CPU = 20000000
-F_CPU = 8000000
+F_CPU = 18432000
 
 
 # Output format. (can be srec, ihex, binary)
@@ -120,7 +120,7 @@ AVRDUDE_READ_FLASH = -U flash:r:$(TARGET_DEV).hex:r
 
 # Slow down SCK clock for begin atmega programing
 # Clock must be 1/4 of atmega working clock. By default it is 1 MHz;
-AVRDUDE_SCK_FREQUENCY = -B 8
+ AVRDUDE_SCK_FREQUENCY = -B 1
 
 # Uncomment the following if you do /not/ wish a verification to be
 # performed after programming the device.
@@ -132,7 +132,7 @@ AVRDUDE_SCK_FREQUENCY = -B 8
 #AVRDUDE_VERBOSE = -v -v
 
 # Path to avrdude config file
-AVRDUDE_CONFIG_FILE = -C /Applications/Arduino.app/Contents/Java/hardware/tools/avr/etc/avrdude.conf
+AVRDUDE_CONFIG_FILE = -C /Users/darius.kasiulevicius/Library/Arduino15/packages/arduino/tools/avrdude/6.3.0-arduino17/etc/avrdude.conf
 
 AVRDUDE_FLAGS = -p $(MCU) -c $(AVRDUDE_PROGRAMMER)
 AVRDUDE_FLAGS += $(AVRDUDE_SCK_FREQUENCY)
@@ -146,7 +146,8 @@ AVRDUDE_FLAGS += $(AVRDUDE_CONFIG_FILE)
 
 
 # Define programs and commands.
-PATH_TO_EXEC = /Applications/Arduino.app/Contents/Java/hardware/tools/avr/bin/
+PATH_TO_EXEC = /Users/darius.kasiulevicius/Library/Arduino15/packages/arduino/tools/avr-gcc/7.3.0-atmel3.6.1-arduino7/bin/
+PATH_TO_AVRDUDE = /Users/darius.kasiulevicius/Library/Arduino15/packages/arduino/tools/avrdude/6.3.0-arduino17/bin/
 SHELL = sh
 CC = $(PATH_TO_EXEC)avr-gcc
 OBJCOPY = $(PATH_TO_EXEC)avr-objcopy
@@ -154,7 +155,7 @@ OBJDUMP = $(PATH_TO_EXEC)avr-objdump
 SIZE = $(PATH_TO_EXEC)avr-size
 AR = $(PATH_TO_EXEC)avr-ar rcs
 NM = $(PATH_TO_EXEC)avr-nm
-AVRDUDE = $(PATH_TO_EXEC)avrdude
+AVRDUDE = $(PATH_TO_AVRDUDE)avrdude
 REMOVE = rm -f
 REMOVEDIR = rm -rf
 COPY = cp
