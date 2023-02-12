@@ -89,7 +89,8 @@
 #define CONFIG_RESET_FACTORY     0x34
 
 volatile uint8_t oldStatus,
-    lastSecond = 0xFF,
+    lastBeepSecond = 0xFF,
+    lastBatterySecond = 0xFF,
     isMinus = FALSE,
     showTime = FALSE;
 
@@ -507,6 +508,11 @@ void renewDisplay(void)
 
 void clearDisplay(void)
 {
+    uint8_t tmp;
+    tmp = showTime;
+    showTime = FALSE;
+    spiMasterTransmit(CHAR_SPACE);
+    spiMasterTransmit(CHAR_SPACE);
     spiMasterTransmit(CHAR_SPACE);
     spiMasterTransmit(CHAR_SPACE);
     spiMasterTransmit(CHAR_SPACE);
@@ -514,6 +520,7 @@ void clearDisplay(void)
     spiMasterTransmit(CHAR_SPACE);
     spiMasterTransmit(CHAR_SPACE);
     renewDisplay();
+    showTime = tmp;
 }
 
 void displayTime(void)
@@ -863,7 +870,7 @@ void showBatteryLevel(uint32_t number)
     renewDisplay();
 }
 
-uint32_t getBatteryLevel()
+uint8_t getBatteryLevel(void)
 {
     uint8_t freq = 1;
     uint32_t res = 0, sum = 0;
@@ -877,7 +884,6 @@ uint32_t getBatteryLevel()
             res = 0;
         }
         sum += res;
-        _delay_ms(30);
         freq++;
     }
     sum = sum / 100;
@@ -894,6 +900,79 @@ void batteryLevelMenu(void)
         showBatteryLevel(getBatteryLevel());
         _delay_ms(1000);
     }
+}
+
+void displayBatteryLevelInTrafficLight(void)
+{
+    uint8_t level;
+    level = getBatteryLevel();
+    PORTC &= ~(1<<LED_GREEN);
+    PORTC &= ~(1<<LED_YELLOW);
+    PORTC &= ~(1<<LED_RED);
+    if (level < 40) {
+       PORTC |= (1<<LED_RED);
+    } else {
+        if (level < 60) {
+            PORTC |= (1<<LED_YELLOW);
+        } else {
+            PORTC |= (1<<LED_GREEN);
+        }
+    }
+}
+
+void renewBatteryLevelInTrafficLight(void)
+{
+    if((time.seconds == 2) && (lastBatterySecond != time.seconds)) {
+        displayBatteryLevelInTrafficLight();
+    }
+    lastBatterySecond = time.seconds;
+}
+
+void isBatteryLow(void)
+{
+    uint8_t level;
+    level = getBatteryLevel();
+    if (level < 40) {
+        deviceSetting.status = STATUS_LOW_BATTERY;
+    }
+}
+
+void makeLowBatterySound(void)
+{
+    uint8_t j;
+    if ((time.seconds % 2 == 0 ) && (lastBeepSecond != time.seconds)) {
+        showTime = TRUE;
+        sendFullChar(CHAR_SPACE);
+        sendFullChar(CHAR_SPACE);
+        sendFullChar(CHAR_SPACE);
+        sendFullChar(CHAR_SPACE);
+        sendFullChar(CHAR_SPACE);
+        sendFullChar(CHAR_SPACE);
+        sendFullChar(CHAR_SPACE);
+        renewDisplay();
+
+        for (j = 1; j <= 50; j++) {
+            PORTD |= (1<<BUZZER_SHORT);
+            _delay_ms(1);
+            PORTD &= ~(1<<BUZZER_SHORT);
+            _delay_ms(1);
+        }
+        for (j = 1; j <= 50; j++) {
+            PORTD |= (1<<BUZZER_SHORT);
+            _delay_ms(2);
+            PORTD &= ~(1<<BUZZER_SHORT);
+            _delay_ms(2);
+        }
+        for (j = 1; j <= 50; j++) {
+            PORTD |= (1<<BUZZER_SHORT);
+            _delay_ms(3);
+            PORTD &= ~(1<<BUZZER_SHORT);
+            _delay_ms(3);
+        }
+    } else {
+       clearDisplay();
+    }
+    lastBeepSecond = time.seconds;
 }
 
 void configureDevice(void)
@@ -1037,7 +1116,7 @@ void makeBeep(void){
     }
     tmp = (uint8_t *) &deviceSetting.short1;
     for(uint8_t i = 0; i < deviceSetting.shortCount; i++){
-        if((time.seconds == *tmp) && (lastSecond != time.seconds)){
+        if((time.seconds == *tmp) && (lastBeepSecond != time.seconds)){
             PORTD |= (1<<BUZZER_SHORT);
             _delay_ms(150);
             PORTD &= ~(1<<BUZZER_SHORT);
@@ -1047,7 +1126,7 @@ void makeBeep(void){
     }
     tmp = (uint8_t *) &deviceSetting.long1;
     for(uint8_t i = 0; i < deviceSetting.longCount; i++){
-        if((time.seconds == *tmp) && (lastSecond != time.seconds)){
+        if((time.seconds == *tmp) && (lastBeepSecond != time.seconds)){
             PORTD |= (1<<BUZZER_LONG);
             _delay_ms(350);
             PORTD &= ~(1<<BUZZER_LONG);
@@ -1055,7 +1134,7 @@ void makeBeep(void){
         }
         tmp++;
     }
-    lastSecond = time.seconds;
+    lastBeepSecond = time.seconds;
 }
 
 void calculateTime(void)
@@ -1137,6 +1216,10 @@ int main(void)
         displayHello();
     }
 
+    // Display battery level in control panel
+    displayBatteryLevelInTrafficLight();
+    isBatteryLow();
+
     // Repeat indefinitely
     for(;;)
     {
@@ -1150,9 +1233,14 @@ int main(void)
                 case STATUS_REAL_TIME_START:
                     displayTime();
                     makeBeep();
+                    renewBatteryLevelInTrafficLight();
                     break;
                 case STATUS_REAL_TIME:
                     displayTime();
+                    renewBatteryLevelInTrafficLight();
+                    break;
+                case STATUS_LOW_BATTERY:
+                    makeLowBatterySound();
                     break;
                 case STATUS_CONFIG_MENU:
                     cli();
@@ -1163,19 +1251,4 @@ int main(void)
             }
         }
     }
-
-        if ((time.seconds & 0x0F) == 0x01) {
-            PORTC |= (1<<LED_GREEN);
-        }
-        if ((time.seconds & 0x0F) == 0x02) {
-            PORTC |= (1<<LED_YELLOW);
-        }
-        if ((time.seconds & 0x0F) == 0x03) {
-            PORTC |= (1<<LED_RED);
-        }
-        if ((time.seconds & 0x0F) == 0x04) {
-            PORTC &= ~(1<<LED_GREEN);
-            PORTC &= ~(1<<LED_YELLOW);
-            PORTC &= ~(1<<LED_RED);
-        }
 }
