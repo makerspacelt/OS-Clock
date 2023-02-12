@@ -55,6 +55,10 @@
 #define PRESSED_ENTER   0x08    // sv2 left     - atmega pin 5   PD3 INT1
 #define PRESSED_CANCEL  0x20    // sv4 right    - atmega pin 11  PD5
 
+#define LED_GREEN   PC3    // atmega pin 26
+#define LED_YELLOW  PC2    // atmega pin 25
+#define LED_RED     PC1    // atmega pin 24
+
 #define BUZZER_LONG     PD6     // PD6
 #define BUZZER_SHORT    PD7     // PD7
 
@@ -64,6 +68,7 @@
 #define STATUS_ZERO_TIME_START  0x03
 #define STATUS_PLUS_TIME_START  0x04
 #define STATUS_MINUS_TIME_START 0x05
+#define STATUS_LOW_BATTERY      0xFF
 
 #define CONFIG_EXIT              0x00
 #define CONFIG_START             0x01
@@ -831,7 +836,7 @@ void configRealTime(void)
     }
 }
 
-uint32_t getBatteryLevel(void)
+uint32_t getRawBatteryLevel(void)
 {
     uint8_t low, high;
     uint32_t res = 0;
@@ -848,31 +853,46 @@ uint32_t getBatteryLevel(void)
     return res;
 }
 
-void showBatteryLevel(void)
+void showBatteryLevel(uint32_t number)
 {
-    uint8_t freq = 0;
-    uint32_t res = 0;
+    clearDisplay();
+    displayChar(number / 1000);
+    displayChar(number / 100 % 10);
+    displayChar(number / 10 % 10);
+    displayChar(number % 10);
+    renewDisplay();
+}
+
+uint32_t getBatteryLevel()
+{
+    uint8_t freq = 1;
+    uint32_t res = 0, sum = 0;
+
+    while (freq % 100 != 0) {
+        res = getRawBatteryLevel();
+        res = ((75 * res) / 100) - 505;
+        if (res > 100) {
+            res = 100;
+        } else if (res < 0) {
+            res = 0;
+        }
+        sum += res;
+        _delay_ms(30);
+        freq++;
+    }
+    sum = sum / 100;
+
+    return sum;
+}
+
+void batteryLevelMenu(void)
+{
     while (TRUE) {
         if (0 != getNonBlockingPressedButton()) {
             return;
         }
-        if (freq % 1000 == 0) {
-            res = getBatteryLevel();
-            res = ((75 * res) / 100) - 505;
-            if (res > 100) {
-                res = 100;
-            } else if (res < 0) {
-                res = 0;
-            }
-            clearDisplay();
-            displayChar(res / 1000);
-            displayChar(res / 100 % 10);
-            displayChar(res / 10 % 10);
-            displayChar(res % 10);
-            renewDisplay();
-        }
-        freq++;
-        _delay_ms(50);
+        showBatteryLevel(getBatteryLevel());
+        _delay_ms(1000);
     }
 }
 
@@ -992,7 +1012,7 @@ void configureDevice(void)
                         configRealTime();
                         break;
                     case CONFIG_BATTERY_LEVEL: //0x33
-                        showBatteryLevel();
+                        batteryLevelMenu();
                         break;
                     case CONFIG_RESET_FACTORY: //0x34
                         setFactorySetting();
@@ -1143,4 +1163,19 @@ int main(void)
             }
         }
     }
+
+        if ((time.seconds & 0x0F) == 0x01) {
+            PORTC |= (1<<LED_GREEN);
+        }
+        if ((time.seconds & 0x0F) == 0x02) {
+            PORTC |= (1<<LED_YELLOW);
+        }
+        if ((time.seconds & 0x0F) == 0x03) {
+            PORTC |= (1<<LED_RED);
+        }
+        if ((time.seconds & 0x0F) == 0x04) {
+            PORTC &= ~(1<<LED_GREEN);
+            PORTC &= ~(1<<LED_YELLOW);
+            PORTC &= ~(1<<LED_RED);
+        }
 }
