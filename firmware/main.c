@@ -59,6 +59,9 @@
 #define LED_YELLOW  PC2    // atmega pin 25
 #define LED_RED     PC1    // atmega pin 24
 
+#define BATTERY_YELLOW_LEVEL  60 // 60
+#define BATTERY_RED_LEVEL     40 // 40
+
 #define BUZZER_LONG     PD6     // PD6
 #define BUZZER_SHORT    PD7     // PD7
 
@@ -909,10 +912,10 @@ void displayBatteryLevelInTrafficLight(void)
     PORTC &= ~(1<<LED_GREEN);
     PORTC &= ~(1<<LED_YELLOW);
     PORTC &= ~(1<<LED_RED);
-    if (level < 40) {
+    if (level < BATTERY_RED_LEVEL) {
        PORTC |= (1<<LED_RED);
     } else {
-        if (level < 60) {
+        if (level < BATTERY_YELLOW_LEVEL) {
             PORTC |= (1<<LED_YELLOW);
         } else {
             PORTC |= (1<<LED_GREEN);
@@ -932,7 +935,7 @@ void isBatteryLow(void)
 {
     uint8_t level;
     level = getBatteryLevel();
-    if (level < 40) {
+    if (level < BATTERY_RED_LEVEL) {
         deviceSetting.status = STATUS_LOW_BATTERY;
     }
 }
@@ -951,23 +954,17 @@ void makeLowBatterySound(void)
         sendFullChar(CHAR_SPACE);
         renewDisplay();
 
-        for (j = 1; j <= 50; j++) {
+        for (j = 1; j <= 5; j++) {
             PORTD |= (1<<BUZZER_SHORT);
-            _delay_ms(1);
+            _delay_ms(50);
             PORTD &= ~(1<<BUZZER_SHORT);
-            _delay_ms(1);
+            _delay_ms(50);
         }
-        for (j = 1; j <= 50; j++) {
+        for (j = 1; j <= 2; j++) {
             PORTD |= (1<<BUZZER_SHORT);
-            _delay_ms(2);
+            _delay_ms(80);
             PORTD &= ~(1<<BUZZER_SHORT);
-            _delay_ms(2);
-        }
-        for (j = 1; j <= 50; j++) {
-            PORTD |= (1<<BUZZER_SHORT);
-            _delay_ms(3);
-            PORTD &= ~(1<<BUZZER_SHORT);
-            _delay_ms(3);
+            _delay_ms(80);
         }
     } else {
        clearDisplay();
@@ -1217,7 +1214,9 @@ int main(void)
     }
 
     // Display battery level in control panel
+    _delay_ms(100);
     displayBatteryLevelInTrafficLight();
+    _delay_ms(100);
     isBatteryLow();
 
     // Repeat indefinitely
