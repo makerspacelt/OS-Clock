@@ -905,6 +905,29 @@ void batteryLevelMenu(void)
     }
 }
 
+void cycleCountMenu(void)
+{
+    uint32_t count = 0;
+    uint8_t last = 0;
+    while (TRUE) {
+        if (0 != getNonBlockingPressedButton()) {
+            return;
+        }
+        last = time.seconds;
+        while (last == time.seconds) {
+            readTime();
+            count++;
+        }
+        clearDisplay();
+        displayChar(count / 1000);
+        displayChar(count / 100 % 10);
+        displayChar(count / 10 % 10);
+        displayChar(count % 10);
+        renewDisplay();
+        count = 0;
+    }
+}
+
 void displayBatteryLevelInTrafficLight(void)
 {
     uint8_t level;
@@ -1094,6 +1117,9 @@ void configureDevice(void)
                         setFactorySetting();
                         saveSettings();
                         configStatus = CONFIG_EXIT;
+                        break;
+                    case 0x35: //0x35 hidden, enable on CONFIG_TIME
+                        cycleCountMenu();
                         break;
                 }
                 break;
