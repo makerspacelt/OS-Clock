@@ -1026,11 +1026,11 @@ void configureDevice(void)
                 switch (configStatus)
                 {
                     case CONFIG_START: //0x01
-                    case CONFIG_BEEPS: //0x02
                         minValue = (configStatus << 4) | 0x01;
                         maxValue = (configStatus << 4) | 0x05;
                         configStatus = minValue;
                         break;
+                    case CONFIG_BEEPS: //0x02
                     case CONFIG_TIME: //0x03
                         minValue = (CONFIG_TIME << 4) | 0x01;
                         maxValue = (CONFIG_TIME << 4) | 0x04;
