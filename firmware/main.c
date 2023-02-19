@@ -59,8 +59,8 @@
 #define LED_YELLOW  PC2    // atmega pin 25
 #define LED_RED     PC1    // atmega pin 24
 
-#define BATTERY_YELLOW_LEVEL  30 // 60 70
-#define BATTERY_RED_LEVEL     18 // 40 58
+#define BATTERY_YELLOW_LEVEL  70 // 60 70
+#define BATTERY_RED_LEVEL     58 // 40 58
 
 #define BUZZER_LONG     PD6     // PD6
 #define BUZZER_SHORT    PD7     // PD7
@@ -880,7 +880,7 @@ uint8_t getBatteryLevel(void)
 
     while (freq % 100 != 0) {
         res = getRawBatteryLevel();
-        res = ((75 * res) / 100) - 545;
+        res = ((75 * res) / 100) - 505;
         if (res > 100) {
             res = 100;
         } else if (res < 0) {
