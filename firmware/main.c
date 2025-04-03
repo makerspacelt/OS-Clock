@@ -57,7 +57,7 @@ volatile start_t oStart;
 
 void USART_vInit(void)
 {
-	// Set baud rate
+	// Set baud rate to 19200
 	UBRRH = (uint8_t)(12>>8);
 	UBRRL = (uint8_t)12;
 	// Set frame format to 8 data bits, no parity, 1 stop bit
