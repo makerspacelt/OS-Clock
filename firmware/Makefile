@@ -120,7 +120,7 @@ AVRDUDE_READ_FLASH = -U flash:r:$(TARGET_DEV).hex:r
 
 # Slow down SCK clock for begin atmega programing
 # Clock must be 1/4 of atmega working clock. By default it is 1 MHz;
- AVRDUDE_SCK_FREQUENCY = -B 1
+ AVRDUDE_SCK_FREQUENCY = -B 5
 
 # Uncomment the following if you do /not/ wish a verification to be
 # performed after programming the device.
