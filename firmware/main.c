@@ -111,6 +111,9 @@ typedef struct {
 #define DATA_LEN 25
 #define SETTING_ADDRESS 0x08
 
+#define F_CPU 18432000UL  // 18,432 MHz clock
+#define SCL_CLOCK 100000L  // 100kHz
+
 typedef struct {
     uint8_t firstAddress;   //value are not saved, only for saving addressing
     uint8_t saved;          //from 0x08
@@ -160,11 +163,24 @@ void init(void)
     PORTC = 0x00;
     PORTD = 0x00;
 
+    //SLA and SLC pins sets
+    DDRC &= ~((1 << PC4) | (1 << PC5));  // Make sure pins are inputs (or untouched)
+    PORTC &= ~((1 << PC4) | (1 << PC5));  // Don’t enable internal pullups unless testing
+
     // set buttons as input
     DDRD &= ~((1<<PD2)|(1<<PD3)|(1<<PD4)|(1<<PD5));
     PORTD |= (1<<PD2)|(1<<PD3)|(1<<PD4)|(1<<PD5);
     // enable pull up resistors
     MCUCR &= ~(1<<PUD);
+}
+
+void TWI_init(void) {
+    // Set bit rate
+    TWSR = 0x00;  // Prescaler = 1
+    TWBR = ((F_CPU / SCL_CLOCK) - 16) / 2;
+
+    // Enable TWI
+    TWCR = (1 << TWEN);
 }
 
 void initFeatures(void)
@@ -180,8 +196,8 @@ void initFeatures(void)
     sei();
     asm volatile ("nop");
 
-    //Configure TWI speed
-    TWBR = (uint8_t)85;
+    TWI_init();
+    asm volatile ("nop");
 }
 
 void initUSART(void)
@@ -341,25 +357,25 @@ uint8_t readTime(void)
 void writeTime(void)
 {
     uint8_t tmp[4];
-    tmp[0] = 0x00;
-    tmp[1] = time.seconds;
+    tmp[0] = 0x00; // Start at register 0x00
+    tmp[1] = time.seconds & 0x7F; // Clear CH bit explicitly (bit7 = 0)
     tmp[2] = time.minutes;
-    tmp[3] = time.hours;
+    tmp[3] = time.hours | 0x40; // Set 24-hour mode (bit6 = 1)
     twiWrite(tmp, 4);
 }
 
 void readSettings(void)
 {
     uint8_t reg = SETTING_ADDRESS;
-    while(!twiWrite(&reg, 1)) {}
-    twiRead((uint8_t *) &deviceSetting.saved, DATA_LEN);
+    twiWrite(&reg, 1);
+    twiRead((uint8_t *) &deviceSetting.saved, DATA_LEN - 1);
 }
 
 void saveSettings(void)
 {
     deviceSetting.saved = TRUE;
     deviceSetting.firstAddress = SETTING_ADDRESS;
-    twiWrite((uint8_t *) &deviceSetting, DATA_LEN + 1);
+    twiWrite((uint8_t *) &deviceSetting, DATA_LEN);
 }
 
 void spiMasterTransmit(uint8_t cData)
@@ -1032,8 +1048,8 @@ void configureDevice(void)
                         break;
                     case CONFIG_BEEPS: //0x02
                     case CONFIG_TIME: //0x03
-                        minValue = (CONFIG_TIME << 4) | 0x01;
-                        maxValue = (CONFIG_TIME << 4) | 0x04;
+                        minValue = (configStatus << 4) | 0x01;
+                        maxValue = (configStatus << 4) | 0x04;
                         configStatus = minValue;
                         break;
                     case CONFIG_START_REAL_TIME: //0x11
@@ -1216,6 +1232,27 @@ void displayHello(void)
     }
 }
 
+void displayHay(void)
+{
+    char hello[] = { "HAY" };
+    uint8_t i = 0;
+
+    showTime = FALSE;
+    while (hello[i] != 0x00) {
+        spiMasterTransmit(hello[i]);
+        renewDisplay();
+        _delay_ms(100);
+        i++;
+    }
+    i = 6;
+    while (i != 0) {
+        spiMasterTransmit(CHAR_SPACE);
+        renewDisplay();
+        _delay_ms(50);
+        i--;
+    }
+}
+
 int main(void)
 {
     init();
@@ -1226,8 +1263,11 @@ int main(void)
     asm volatile ("nop");
     asm volatile ("nop");
     clearDisplay();
+    displayHay();
+    clearDisplay();
 
     // Read settings from memory
+    readTime();
     readSettings();
 
     // Set factory settings
