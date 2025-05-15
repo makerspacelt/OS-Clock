@@ -360,7 +360,7 @@ void writeTime(void)
     tmp[0] = 0x00; // Start at register 0x00
     tmp[1] = time.seconds & 0x7F; // Clear CH bit explicitly (bit7 = 0)
     tmp[2] = time.minutes;
-    tmp[3] = time.hours | 0x40; // Set 24-hour mode (bit6 = 1)
+    tmp[3] = time.hours; // Set 24-hour mode (bit6 = 0)
     twiWrite(tmp, 4);
 }
 
@@ -1234,7 +1234,7 @@ void displayHello(void)
 
 void displayHay(void)
 {
-    char hello[] = { "HAY" };
+    char hello[] = { "COOL" };
     uint8_t i = 0;
 
     showTime = FALSE;
@@ -1262,6 +1262,13 @@ int main(void)
     // Relax after exhausting work
     asm volatile ("nop");
     asm volatile ("nop");
+
+    // Display battery level in control panel
+    _delay_ms(100);
+    displayBatteryLevelInTrafficLight();
+    _delay_ms(100);
+    isBatteryLow();
+
     clearDisplay();
     displayHay();
     clearDisplay();
@@ -1278,12 +1285,6 @@ int main(void)
     if (deviceSetting.status == STATUS_REAL_TIME) {
         displayHello();
     }
-
-    // Display battery level in control panel
-    _delay_ms(100);
-    displayBatteryLevelInTrafficLight();
-    _delay_ms(100);
-    isBatteryLow();
 
     // Repeat indefinitely
     for(;;)
